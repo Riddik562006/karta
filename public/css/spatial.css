@@ -1,0 +1,524 @@
+/* =========================================================
+   SPATIAL UI / DASHBOARD LAYOUT (Apple Vision Pro Style)
+   ========================================================= */
+
+:root {
+  --glass-bg: rgba(28, 28, 35, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --glass-blur: blur(30px) saturate(150%);
+  --accent: #E0FF4F;
+  /* Vivid highlight color */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #fff;
+  background: #000;
+  overflow-x: hidden;
+}
+
+/* Background Layer */
+.spatial-video-bg {
+  position: fixed;
+  inset: -10%;
+  /* Bleed edge to avoid scrolling glitches */
+  width: 120%;
+  height: 120%;
+  z-index: -2;
+}
+
+.spatial-video-bg video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.4) contrast(1.1);
+}
+
+/* A soft vignette around the edges to focus center */
+.spatial-vignette {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle, transparent 30%, rgba(0, 0, 0, 0.7) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* === GLASSMORPHISM COMPONENT === */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 36px;
+  box-shadow: var(--glass-shadow);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background 0.4s, border 0.4s;
+  overflow: hidden;
+  position: relative;
+}
+
+.glass-panel:hover {
+  transform: translateY(-4px) scale(1.01);
+  background: rgba(40, 40, 50, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+/* Base interactive elements */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: #000;
+  padding: 14px 28px;
+  border-radius: 100px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  transition: all 0.3s;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(255, 255, 255, 0.2);
+}
+
+/* === NAVIGATION === */
+.spatial-nav {
+  position: fixed;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 12px 24px 12px 20px;
+  border-radius: 100px;
+  z-index: 100;
+}
+
+/* Prevent nav from jumping to the right (overriding .glass-panel:hover transform which breaks translateX) */
+.spatial-nav.glass-panel:hover {
+  transform: translateX(-50%);
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.5px;
+  padding-right: 16px;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.nav-brand img {
+  width: 28px;
+  height: 28px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 24px;
+}
+
+.nav-links a {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.nav-links a:hover {
+  opacity: 1;
+}
+
+.nav-user {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.nav-user:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* === BENTO DASHBOARD GRID === */
+.spatial-dashboard {
+  max-width: 1440px;
+  margin: 140px auto 100px;
+  padding: 0 40px;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-auto-rows: 240px;
+  gap: 24px;
+}
+
+/* Common text layouts */
+.panel-content {
+  position: relative;
+  z-index: 2;
+  padding: 36px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-bg-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.35;
+  transition: transform 6s ease, opacity 0.4s;
+  z-index: 1;
+}
+
+.glass-panel:hover .panel-bg-img {
+  transform: scale(1.04);
+  opacity: 0.5;
+}
+
+.panel-tag {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+/* 1. HERO MAIN CARD */
+.card-hero {
+  grid-column: span 8;
+  grid-row: span 2;
+  justify-content: flex-end;
+}
+
+.card-hero .panel-content {
+  justify-content: flex-end;
+}
+
+.card-hero h1 {
+  font-size: clamp(48px, 5vw, 72px);
+  line-height: 1.05;
+  letter-spacing: -2px;
+  margin: 0 0 16px 0;
+  font-weight: 800;
+  max-width: 80%;
+}
+
+.card-hero p {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 32px 0;
+  max-width: 60%;
+}
+
+/* 2. PROFILE / POINTS CARD */
+.card-profile {
+  grid-column: span 4;
+  grid-row: span 1;
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-profile .avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #E0FF4F, #00FF87);
+  color: #000;
+  font-size: 24px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.card-profile h3 {
+  margin: 0 0 4px;
+  font-size: 24px;
+}
+
+.card-profile p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+}
+
+.level-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 100px;
+  margin-top: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.level-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 65%;
+  background: var(--accent);
+  border-radius: 100px;
+}
+
+/* 3. INTERACTIVE MAP CARD */
+.card-map {
+  grid-column: span 4;
+  grid-row: span 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-map .panel-content {
+  padding: 24px;
+}
+
+.card-map h3 {
+  font-size: 24px;
+  margin: 0 0 8px;
+}
+
+.card-map p {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0 0 24px;
+}
+
+.map-open-btn {
+  margin-top: auto;
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 100px;
+  font-size: 13px;
+  backdrop-filter: blur(10px);
+}
+
+.map-open-btn:hover {
+  background: #fff;
+  color: #000;
+}
+
+/* 4. JOURNAL / ARTICLES */
+.card-journal {
+  grid-column: span 6;
+  grid-row: span 1;
+}
+
+.card-journal h2 {
+  margin: 0 0 10px;
+  font-size: 32px;
+}
+
+.card-journal p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 16px;
+  max-width: 80%;
+}
+
+.card-journal .panel-content {
+  justify-content: center;
+}
+
+/* 5. LOCATIONS CAROUSEL OVERVIEW */
+.card-locations {
+  grid-column: span 6;
+  grid-row: span 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.locations-list {
+  display: flex;
+  gap: 16px;
+  margin-top: auto;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.locations-list::-webkit-scrollbar {
+  display: none;
+}
+
+.loc-item {
+  flex: 0 0 120px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.loc-item img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 8px;
+}
+
+.loc-item span {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 6. WEATHER, RANDOM & AUDIO WIDGETS */
+.card-weather {
+  grid-column: span 4;
+  grid-row: span 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.card-weather .weather-temp {
+  background: linear-gradient(135deg, #fff, #E0FF4F);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.card-random {
+  grid-column: span 3;
+  grid-row: span 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: transform 0.2s ease, background 0.2s ease;
+  cursor: pointer;
+}
+
+.card-random:hover {
+  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.card-audio {
+  grid-column: span 5;
+  grid-row: span 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.card-audio .play-btn {
+  transition: transform 0.2s ease;
+}
+
+.card-audio .play-btn:hover {
+  transform: scale(1.1);
+}
+
+.sound-wave {
+  animation: bounceHeight 1s ease-in-out infinite alternate;
+}
+
+.sound-wave:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.sound-wave:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.sound-wave:nth-child(4) {
+  animation-delay: 0.6s;
+}
+
+@keyframes bounceHeight {
+  0% {
+    transform: scaleY(0.4);
+  }
+
+  100% {
+    transform: scaleY(1.0);
+  }
+}
+
+/* Footer Glass */
+.spatial-footer {
+  text-align: center;
+  padding: 40px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+}
+
+/* RESPONSIVE DASHBOARD */
+@media (max-width: 1024px) {
+  .spatial-dashboard {
+    grid-template-columns: 1fr;
+    grid-auto-rows: minmax(auto, auto);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card-hero,
+  .card-profile,
+  .card-map,
+  .card-journal,
+  .card-locations,
+  .card-weather,
+  .card-random,
+  .card-audio {
+    grid-column: 1 / -1;
+  }
+
+  .card-hero {
+    min-height: 480px;
+  }
+
+  .card-hero h1 {
+    font-size: 48px;
+    max-width: 100%;
+  }
+
+  .card-hero p {
+    max-width: 100%;
+  }
+
+  .spatial-nav {
+    width: 90%;
+    justify-content: space-between;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  /* hide links on mobile for now */
+}

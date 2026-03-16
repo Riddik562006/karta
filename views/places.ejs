@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Places — CitiVoice</title>
+    <link rel="stylesheet" href="/css/spatial.css">
+    <style>
+        body {
+            background-color: #050505;
+            color: #fff;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* IMMERSIVE SPATIAL BACKGROUND */
+        .page-bg {
+            position: fixed;
+            inset: -20%;
+            width: 140%;
+            height: 140%;
+            z-index: -2;
+            background-image:
+                radial-gradient(circle at 20% 40%, rgba(224, 255, 79, 0.12), transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(41, 128, 185, 0.12), transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(232, 67, 147, 0.08), transparent 50%);
+            background-color: #050505;
+            filter: blur(80px);
+            animation: breathe 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes breathe {
+            0% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+        }
+
+        .spatial-vignette {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.5) 70%, #000 100%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .hero-section {
+            padding: 160px 40px 80px;
+            text-align: center;
+        }
+
+        .hero-title {
+            font-size: 5rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin: 0;
+            letter-spacing: -2px;
+            background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.3) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            animation: floatUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @media (min-width: 1024px) {
+            .hero-title {
+                font-size: 7rem;
+                letter-spacing: -4px;
+            }
+        }
+
+        @keyframes floatUp {
+            from {
+                transform: translateY(40px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .hero-subtitle {
+            font-size: 1.3rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 15px;
+            font-weight: 500;
+            letter-spacing: -0.5px;
+            animation: floatUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
+            opacity: 0;
+        }
+
+        /* RADICAL MASONRY HORIZONTAL / STAGGERED GRID */
+        .catalog-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 40px 200px;
+            /* space for bottom dock */
+            column-count: 1;
+            column-gap: 30px;
+        }
+
+        @media (min-width: 768px) {
+            .catalog-container {
+                column-count: 2;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .catalog-container {
+                column-count: 3;
+            }
+        }
+
+        @media (min-width: 1600px) {
+            .catalog-container {
+                column-count: 4;
+            }
+        }
+
+        .place-card {
+            break-inside: avoid-column;
+            margin-bottom: 30px;
+            border-radius: 36px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            background: rgba(25, 25, 30, 0.4);
+            backdrop-filter: blur(40px) saturate(200%);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: floatUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+            opacity: 0;
+            transform: translateZ(0);
+            /* Force hardware accel */
+        }
+
+        .place-card:hover {
+            transform: scale(1.02) translateY(-10px);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.7), 0 0 50px rgba(255, 255, 255, 0.05);
+            z-index: 10;
+        }
+
+        .card-img-wrap {
+            width: 100%;
+            height: clamp(250px, 30vh, 450px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Make images random sizes to enhance masonry effect */
+        .place-card:nth-child(2n) .card-img-wrap {
+            height: 380px;
+        }
+
+        .place-card:nth-child(3n) .card-img-wrap {
+            height: 280px;
+        }
+
+        .place-card:nth-child(5n) .card-img-wrap {
+            height: 420px;
+        }
+
+        .card-img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+            filter: brightness(0.85) saturate(1.1);
+        }
+
+        .place-card:hover .card-img-wrap img {
+            transform: scale(1.08);
+            filter: brightness(1) saturate(1.2);
+        }
+
+        /* Spatial overlay mask for gradient effect inside card */
+        .card-img-wrap::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, transparent 0%, rgba(20, 20, 25, 0.95) 100%);
+            opacity: 0.9;
+        }
+
+        .card-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 30px;
+            z-index: 2;
+        }
+
+        .card-cat {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 14px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        .card-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin: 0 0 10px 0;
+            line-height: 1.1;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .card-desc {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+            margin: 0;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        /* BOTTOM DOCK ARCHITECTURE (Search & Filters) */
+        .spatial-dock {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            border-radius: 100px;
+            background: rgba(15, 15, 20, 0.65);
+            backdrop-filter: blur(50px) saturate(200%);
+            -webkit-backdrop-filter: blur(50px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            animation: floatUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards;
+            opacity: 0;
+            width: fit-content;
+            max-width: 95vw;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .spatial-dock::-webkit-scrollbar {
+            display: none;
+        }
+
+        .search-mini {
+            display: flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 100px;
+            padding: 8px 16px;
+            height: 50px;
+            width: 220px;
+            border: 1px solid transparent;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .search-mini:focus-within {
+            border-color: var(--accent, #E0FF4F);
+            width: 320px;
+            background: rgba(0, 0, 0, 0.8);
+            box-shadow: 0 0 30px rgba(224, 255, 79, 0.15);
+        }
+
+        .search-mini svg {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .search-mini input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            outline: none;
+            width: 100%;
+            margin-left: 12px;
+            font-size: 15px;
+        }
+
+        .search-mini input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .dock-divider {
+            width: 1px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.15);
+            margin: 0 5px;
+        }
+
+        .filter-btn {
+            height: 48px;
+            padding: 0 16px;
+            border-radius: 100px;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .filter-btn.active {
+            background: #fff;
+            color: #000;
+            box-shadow: 0 10px 25px rgba(255, 255, 255, 0.25);
+        }
+
+        /* Dot colors */
+        .filter-btn .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #555;
+            transition: 0.3s;
+        }
+
+        .filter-btn.active .dot {
+            box-shadow: 0 0 12px currentColor;
+        }
+
+        .filter-btn[data-cat="all"].active .dot {
+            background: #000;
+        }
+
+        .filter-btn[data-cat="architecture"].active .dot {
+            background: #e67e22;
+        }
+
+        .filter-btn[data-cat="nature"].active .dot {
+            background: #27ae60;
+        }
+
+        .filter-btn[data-cat="history"].active .dot {
+            background: #8e44ad;
+        }
+
+        .filter-btn[data-cat="bridge"].active .dot {
+            background: #2980b9;
+        }
+
+        .filter-btn[data-cat="cultural"].active .dot {
+            background: #e84393;
+        }
+
+        .no-results {
+            width: 100%;
+            text-align: center;
+            padding: 100px 0;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 1.5rem;
+            display: none;
+        }
+
+        @media (max-width: 1024px) {
+            .spatial-dock {
+                width: 90%;
+                flex-wrap: wrap;
+                justify-content: center;
+                height: auto;
+                border-radius: 36px;
+                padding: 15px;
+                bottom: 20px;
+            }
+
+            .search-mini {
+                width: 100%;
+            }
+
+            .search-mini:focus-within {
+                width: 100%;
+            }
+
+            .dock-divider {
+                display: none;
+            }
+
+            .filter-btn {
+                height: 44px;
+                padding: 0 16px;
+                font-size: 14px;
+            }
+
+            .hero-section {
+                padding-top: 120px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-bg"></div>
+    <div class="spatial-vignette"></div>
+
+    <nav class="spatial-nav glass-panel">
+        <div class="nav-brand">
+            <a href="/" style="display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit;">
+                <img src="/images/logo-icon.png" alt="Logo" style="height:24px;">
+                CitiVoice
+            </a>
+        </div>
+        <div class="nav-links">
+            <a href="/places" class="active">Места</a>
+            <a href="/#routes">Маршруты</a>
+            <a href="/game">Игра</a>
+            <a href="/map">Карта</a>
+            <% if (locals.user && locals.user.role==='admin' ) { %>
+                <a href="/admin" style="color: #E0FF4F; font-weight: 600;">Админ</a>
+                <% } %>
+        </div>
+        <div class="nav-user">
+            <a href="<%= locals.user ? '/profile' : '/login' %>" style="color: inherit;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </a>
+        </div>
+    </nav>
+
+    <div class="hero-section">
+        <h1 class="hero-title">Открывай свой город</h1>
+        <div class="hero-subtitle">Коллекция уникальных историй и впечатлений</div>
+    </div>
+
+    <!-- SPATIAL DOCK FOR SEARCH & FILTER -->
+    <div class="spatial-dock">
+        <div class="search-mini">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchInput" placeholder="Поиск по местам..." autocomplete="off">
+        </div>
+
+        <div class="dock-divider"></div>
+
+        <button class="filter-btn active" data-cat="all">
+            <span class="dot"></span> Все
+        </button>
+        <button class="filter-btn" data-cat="architecture">
+            <span class="dot"></span> Архитектура
+        </button>
+        <button class="filter-btn" data-cat="bridge">
+            <span class="dot"></span> Мосты
+        </button>
+        <button class="filter-btn" data-cat="nature">
+            <span class="dot"></span> Природа
+        </button>
+        <button class="filter-btn" data-cat="history">
+            <span class="dot"></span> История
+        </button>
+        <button class="filter-btn" data-cat="cultural">
+            <span class="dot"></span> Культура
+        </button>
+    </div>
+
+    <div class="catalog-container" id="placesGrid">
+        <% places.forEach((place, index)=> { %>
+            <a href="/place/<%= place.id %>" class="place-card" data-title="<%= (place.title || '').toLowerCase() %>"
+                data-cat="<%= place.category || 'other' %>"
+                style="animation-delay: <%= 0.2 + ((index % 10) * 0.1) %>s;">
+
+                <div class="card-img-wrap">
+                    <img src="<%= place.image || place.image_url || '/images/placeholder.jpg' %>"
+                        alt="<%= place.title %>">
+                </div>
+
+                <div class="card-content">
+                    <div class="card-cat" style="
+                        <% if (place.category === 'architecture') { %> color: #e67e22; border-color: rgba(230,126,34,0.3); <% } %>
+                        <% if (place.category === 'nature') { %> color: #27ae60; border-color: rgba(39,174,96,0.3); <% } %>
+                        <% if (place.category === 'bridge') { %> color: #2980b9; border-color: rgba(41,128,185,0.3); <% } %>
+                        <% if (place.category === 'history') { %> color: #8e44ad; border-color: rgba(142,68,173,0.3); <% } %>
+                        <% if (place.category === 'cultural') { %> color: #e84393; border-color: rgba(232,67,147,0.3); <% } %>
+                    ">
+                        <%= place.category || 'Локация' %>
+                    </div>
+                    <h3 class="card-title">
+                        <%= place.title %>
+                    </h3>
+                    <% if (place.short_description) { %>
+                        <p class="card-desc">
+                            <%= place.short_description %>
+                        </p>
+                        <% } else if (place.description) { %>
+                            <p class="card-desc">
+                                <%= place.description.substring(0, 100) %>...
+                            </p>
+                            <% } %>
+                </div>
+            </a>
+            <% }); %>
+    </div>
+
+    <div class="no-results" id="noResults">Ничего не найдено. Давай поищем что-то другое.</div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const cards = document.querySelectorAll('.place-card');
+        const noResults = document.getElementById('noResults');
+
+        let currentSearch = '';
+        let currentCat = 'all';
+
+        function filterCards() {
+            let visibleCount = 0;
+            currentSearch = searchInput.value.toLowerCase().trim();
+
+            cards.forEach(card => {
+                const title = card.getAttribute('data-title');
+                const cat = card.getAttribute('data-cat');
+
+                const matchesSearch = title.includes(currentSearch);
+                const matchesCat = (currentCat === 'all') || (cat === currentCat);
+
+                if (matchesSearch && matchesCat) {
+                    // Using inline-block instead of flex since they are inside CSS columns
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+        }
+
+        searchInput.addEventListener('input', filterCards);
+
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentCat = btn.getAttribute('data-cat');
+                filterCards();
+            });
+        });
+    </script>
+</body>
+
+</html>

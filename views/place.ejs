@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= place.title %> — CitiVoice
+    </title>
+    <link rel="stylesheet" href="/css/spatial.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #050505;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* ═══════════════════════════════════════════
+           CINEMATIC FULL-SCREEN HERO
+           ═══════════════════════════════════════════ */
+        .hero {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            min-height: 600px;
+            overflow: hidden;
+        }
+
+        .hero-image {
+            position: absolute;
+            inset: -50px;
+            width: calc(100% + 100px);
+            height: calc(100% + 100px);
+            object-fit: cover;
+            filter: brightness(0.6) saturate(1.2);
+            transition: transform 0.1s linear;
+        }
+
+        /* Cinematic letterbox gradients */
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(5, 5, 5, 0.6) 0%, transparent 30%, transparent 50%, rgba(5, 5, 5, 1) 100%);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .hero-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 3;
+            padding: 0 60px 80px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .hero-category {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            border-radius: 100px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: fadeSlideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+            opacity: 0;
+        }
+
+        .hero-title {
+            font-size: clamp(3rem, 8vw, 7rem);
+            font-weight: 900;
+            line-height: 0.95;
+            letter-spacing: -3px;
+            margin-bottom: 20px;
+            max-width: 900px;
+            text-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+            animation: fadeSlideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s forwards;
+            opacity: 0;
+        }
+
+        .hero-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            animation: fadeSlideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards;
+            opacity: 0;
+        }
+
+        .hero-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 100px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            font-size: 14px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Scroll indicator */
+        .scroll-hint {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .scroll-hint .arrow {
+            width: 20px;
+            height: 20px;
+            border-right: 2px solid rgba(255, 255, 255, 0.4);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.4);
+            transform: rotate(45deg);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0.4;
+                transform: translateX(-50%) translateY(0);
+            }
+
+            50% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(8px);
+            }
+        }
+
+        @keyframes fadeSlideUp {
+            from {
+                transform: translateY(40px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* ═══════════════════════════════════════════
+           CONTENT SECTIONS
+           ═══════════════════════════════════════════ */
+        .content-area {
+            position: relative;
+            z-index: 5;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 80px 40px 150px;
+        }
+
+        /* Bento Grid Layout */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .bento-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-content {
+                padding: 0 30px 60px;
+            }
+
+            .hero-title {
+                letter-spacing: -1px;
+            }
+        }
+
+        .bento-card {
+            border-radius: 36px;
+            background: rgba(25, 25, 30, 0.5);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            /* Scroll animation */
+            opacity: 0;
+            transform: translateY(60px);
+        }
+
+        .bento-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .bento-card:hover {
+            border-color: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(255, 255, 255, 0.03);
+            transform: translateY(-5px);
+        }
+
+        .bento-card.visible:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Description card - spans full width */
+        .card-description {
+            grid-column: 1 / -1;
+            padding: 50px;
+        }
+
+        .card-description .section-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 30px;
+        }
+
+        .section-label .line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.15), transparent);
+        }
+
+        .card-description .text-content {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.8);
+            max-width: 900px;
+        }
+
+        .card-description .text-content p {
+            margin-bottom: 20px;
+        }
+
+        .card-description .text-content p:first-child::first-letter {
+            font-size: 4rem;
+            font-weight: 800;
+            float: left;
+            line-height: 0.8;
+            margin-right: 12px;
+            margin-top: 6px;
+            color: #fff;
+        }
+
+        /* Map card */
+        .card-map {
+            padding: 0;
+            position: relative;
+            min-height: 400px;
+        }
+
+        #place-map {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+            background: #111;
+        }
+
+        .map-overlay-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 12px;
+        }
+
+        .map-btn {
+            flex: 1;
+            text-align: center;
+            padding: 14px 20px;
+            border-radius: 100px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 14px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .map-btn-primary {
+            background: #fff;
+            color: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .map-btn-primary:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        .map-btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .map-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+        }
+
+        /* Audio card */
+        .card-audio {
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            gap: 20px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-audio::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .card-audio:hover::before {
+            opacity: 1;
+        }
+
+        .audio-icon-wrap {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .card-audio:hover .audio-icon-wrap {
+            background: #fff;
+            transform: scale(1.1);
+            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.3);
+        }
+
+        .audio-icon-wrap svg {
+            width: 32px;
+            height: 32px;
+            fill: #fff;
+            transition: fill 0.3s;
+        }
+
+        .card-audio:hover .audio-icon-wrap svg {
+            fill: #000;
+        }
+
+        .audio-label {
+            font-size: 16px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .audio-sublabel {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Audio progress bar - visible when playing */
+        .audio-progress {
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 100px;
+            overflow: hidden;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+        }
+
+        .audio-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #fff;
+            border-radius: 100px;
+            transition: width 0.3s linear;
+        }
+
+        /* Soundwave animation */
+        .soundwave {
+            display: none;
+            align-items: center;
+            gap: 3px;
+            height: 30px;
+        }
+
+        .soundwave.active {
+            display: flex;
+        }
+
+        .soundwave span {
+            display: block;
+            width: 3px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.5);
+            animation: wave 1s ease-in-out infinite;
+        }
+
+        .soundwave span:nth-child(1) {
+            height: 8px;
+            animation-delay: 0s;
+        }
+
+        .soundwave span:nth-child(2) {
+            height: 16px;
+            animation-delay: 0.1s;
+        }
+
+        .soundwave span:nth-child(3) {
+            height: 24px;
+            animation-delay: 0.2s;
+        }
+
+        .soundwave span:nth-child(4) {
+            height: 16px;
+            animation-delay: 0.3s;
+        }
+
+        .soundwave span:nth-child(5) {
+            height: 8px;
+            animation-delay: 0.4s;
+        }
+
+        @keyframes wave {
+
+            0%,
+            100% {
+                transform: scaleY(0.5);
+            }
+
+            50% {
+                transform: scaleY(1);
+            }
+        }
+
+        /* Back navigation floating button */
+        .back-float {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 28px;
+            border-radius: 100px;
+            background: rgba(15, 15, 20, 0.7);
+            backdrop-filter: blur(50px) saturate(200%);
+            -webkit-backdrop-filter: blur(50px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+            color: #fff;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 15px;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .back-float.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .back-float:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(-50%) translateY(-3px);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+        }
+
+        .back-float svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Leaflet overrides for dark theme */
+        .leaflet-tile-pane {
+            filter: brightness(0.8) saturate(1.2);
+        }
+
+        .leaflet-control-zoom a {
+            background: rgba(30, 30, 40, 0.7) !important;
+            backdrop-filter: blur(20px);
+            color: #fff !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background: rgba(50, 50, 60, 0.9) !important;
+        }
+
+        /* Coordinates display */
+        .coords {
+            text-align: center;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.3);
+            font-family: "SF Mono", Monaco, monospace;
+            letter-spacing: 1px;
+            padding: 20px;
+        }
+    </style>
+<style>
+    /* === CUSTOM NOTIFICATION === */
+    #custom-notification {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 24px;
+        border-radius: 100px;
+        background: rgba(30, 30, 40, 0.85);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        color: white;
+        font-family: inherit;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        pointer-events: none;
+    }
+    #custom-notification.show {
+        opacity: 1;
+        visibility: visible;
+        top: 100px;
+    }
+    #custom-notification.success {
+        border-color: rgba(46, 213, 115, 0.3);
+    }
+    #custom-notification.error {
+        border-color: rgba(255, 71, 87, 0.3);
+    }
+    #notification-icon {
+        font-size: 20px;
+    }
+    #notification-message {
+        font-size: 15px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+    }
+</style>
+</head>
+
+<body>
+
+    <% const catLabels={ architecture: 'Архитектура' , bridge: 'Мосты' , nature: 'Природа' , history: 'История' ,
+        cultural: 'Культура' }; %>
+        <% const catColors={ architecture: '#e67e22' , bridge: '#2980b9' , nature: '#27ae60' , history: '#8e44ad' ,
+            cultural: '#e84393' }; %>
+
+            <!-- ═══ FLOATING NAV ═══ -->
+            <nav class="spatial-nav glass-panel" style="z-index:1000;">
+                <div class="nav-brand">
+                    <a href="/"
+                        style="display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit;">
+                        <img src="/images/logo-icon.png" alt="Logo" style="height:24px;">
+                        CitiVoice
+                    </a>
+                </div>
+                <div class="nav-links">
+                    <a href="/places">Места</a>
+                    <a href="/#routes">Маршруты</a>
+                    <a href="/game">Игра</a>
+                    <a href="/map">Карта</a>
+                </div>
+                <div class="nav-user">
+                    <a href="<%= locals.user ? '/profile' : '/login' %>" style="color: inherit;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </a>
+                </div>
+            </nav>
+
+            <!-- ═══ CINEMATIC HERO ═══ -->
+            <section class="hero" id="hero">
+                <img class="hero-image" id="heroImg"
+                    src="<%= place.image || place.image_url || '/images/placeholder.jpg' %>" alt="<%= place.title %>">
+
+                <div class="hero-content">
+                    <div class="hero-category"
+                        style="background: <%= catColors[place.category] || '#E0FF4F' %>20; color: <%= catColors[place.category] || '#E0FF4F' %>; border-color: <%= catColors[place.category] || '#E0FF4F' %>40;">
+                        <span
+                            style="width:8px; height:8px; border-radius:50%; background:<%= catColors[place.category] || '#E0FF4F' %>;"></span>
+                        <%= catLabels[place.category] || place.category || 'Локация' %>
+                    </div>
+                    <h1 class="hero-title">
+                        <%= place.title %>
+                    </h1>
+                    <div class="hero-meta">
+                        <div class="hero-badge">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <%= place.city || 'Оренбург' %>
+                        </div>
+                        <% if (place.lat && place.lng) { %>
+                            <div class="hero-badge"
+                                style="font-family: 'SF Mono', Monaco, monospace; font-size: 12px; color: rgba(255,255,255,0.5);">
+                                <%= parseFloat(place.lat).toFixed(4) %>°N, <%= parseFloat(place.lng).toFixed(4) %>°E
+                            </div>
+                            <% } %>
+                                <% if (locals.user) { %>
+                                    <button onclick="visitPlace('<%= place.id %>')" class="hero-badge"
+                                        style="background:#E0FF4F; color:#000; cursor:pointer; border:none; transition:0.2s;"
+                                        onmouseover="this.style.transform='scale(1.05)'"
+                                        onmouseout="this.style.transform='scale(1)'">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                        </svg>
+                                        Отметить посещение
+                                    </button>
+                                    <% } %>
+                    </div>
+                </div>
+
+                <div class="scroll-hint">
+                    <div class="arrow"></div>
+                </div>
+            </section>
+
+            <!-- ═══ CONTENT ═══ -->
+            <div class="content-area">
+                <div class="bento-grid">
+
+                    <!-- ОПИСАНИЕ -->
+                    <div class="bento-card card-description" data-animate>
+                        <div class="section-label">
+                            <span>О месте</span>
+                            <span class="line"></span>
+                        </div>
+                        <div class="text-content">
+                            <% const paragraphs=(place.description || '' ).split('\n'); %>
+                                <% paragraphs.forEach(p=> { %>
+                                    <% if (p.trim()) { %>
+                                        <p>
+                                            <%= p %>
+                                        </p>
+                                        <% } %>
+                                            <% }); %>
+                        </div>
+                    </div>
+
+                    <!-- КАРТА -->
+                    <div class="bento-card card-map" data-animate>
+                        <div id="place-map"></div>
+                        <div class="map-overlay-info">
+                            <a href="https://www.google.com/maps?q=<%= place.lat %>,<%= place.lng %>" target="_blank"
+                                class="map-btn map-btn-primary">
+                                Построить маршрут →
+                            </a>
+                            <a href="/map" class="map-btn map-btn-secondary">
+                                На карту
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- АУДИОГИД -->
+                    <div class="bento-card card-audio" id="audioCard" data-animate>
+                        <div class="audio-icon-wrap" id="audioIconWrap">
+                            <svg id="iconPlay" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                            <svg id="iconPause" viewBox="0 0 24 24" style="display:none;">
+                                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                            </svg>
+                        </div>
+                        <div class="soundwave" id="soundwave">
+                            <span></span><span></span><span></span><span></span><span></span>
+                        </div>
+                        <div class="audio-label">Аудиогид</div>
+                        <div class="audio-sublabel">Нажмите, чтобы послушать историю</div>
+                        <div class="audio-progress">
+                            <div class="audio-progress-fill" id="progressFill"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- FLOATING BACK BUTTON -->
+            <a href="/places" class="back-float" id="backFloat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Все места
+            </a>
+
+            <!-- SCRIPTS -->
+            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+            <script>
+                // ═══ DYNAMIC ELEMENTS ON SCROLL ═══
+                const hero = document.getElementById('hero');
+                const backFloat = document.getElementById('backFloat');
+
+                window.addEventListener('scroll', () => {
+                    const scrollY = window.scrollY;
+                    const heroH = hero.offsetHeight;
+
+                    if (scrollY > heroH - 100) {
+                        backFloat.classList.add('visible');
+                    } else {
+                        backFloat.classList.remove('visible');
+                    }
+                });
+
+                // ═══ SCROLL REVEAL ANIMATIONS ═══
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                        }
+                    });
+                }, { threshold: 0.1 });
+
+                document.querySelectorAll('[data-animate]').forEach(el => {
+                    observer.observe(el);
+                });
+
+                // ═══ MAP ═══
+                const lat = <%= place.lat || 51.7727 %>;
+                const lng = <%= place.lng || 55.0988 %>;
+                const catColor = '<%= catColors[place.category] || "#E0FF4F" %>';
+
+                const map = L.map('place-map', {
+                    center: [lat, lng],
+                    zoom: 15,
+                    zoomControl: true
+                });
+
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap'
+                }).addTo(map);
+
+                // Glowing dot marker
+                const markerHtml = `
+            <div style="position:relative; width:30px; height:30px;">
+                <div style="position:absolute; inset:0; border-radius:50%; background:${catColor}; opacity:0.3; animation: ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>
+                <div style="position:absolute; top:7px; left:7px; width:16px; height:16px; border-radius:50%; background:${catColor}; border:3px solid #fff; box-shadow:0 0 20px ${catColor}80;"></div>
+            </div>
+        `;
+
+                const icon = L.divIcon({ className: '', html: markerHtml, iconSize: [30, 30], iconAnchor: [15, 15] });
+                L.marker([lat, lng], { icon }).addTo(map);
+
+                // Inject ping animation
+                const pingStyle = document.createElement('style');
+                pingStyle.textContent = `@keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }`;
+                document.head.appendChild(pingStyle);
+
+                // ═══ AUDIO ═══
+                const audio = new Audio('/audio/<%= place.id %>.mp3');
+                const audioCard = document.getElementById('audioCard');
+                const iconPlay = document.getElementById('iconPlay');
+                const iconPause = document.getElementById('iconPause');
+                const soundwave = document.getElementById('soundwave');
+                const progressFill = document.getElementById('progressFill');
+                let isPlaying = false;
+
+                audioCard.addEventListener('click', () => {
+                    if (isPlaying) {
+                        audio.pause();
+                        iconPlay.style.display = 'block';
+                        iconPause.style.display = 'none';
+                        soundwave.classList.remove('active');
+                    } else {
+                        audio.play().catch(() => {
+                            showNotification('Аудиофайл для этого места ещё не добавлен!', 'error');
+                        });
+                        iconPlay.style.display = 'none';
+                        iconPause.style.display = 'block';
+                        soundwave.classList.add('active');
+                    }
+                    isPlaying = !isPlaying;
+                });
+
+                audio.addEventListener('timeupdate', () => {
+                    if (audio.duration) {
+                        progressFill.style.width = (audio.currentTime / audio.duration * 100) + '%';
+                    }
+                });
+
+                audio.addEventListener('ended', () => {
+                    isPlaying = false;
+                    iconPlay.style.display = 'block';
+                    iconPause.style.display = 'none';
+                    soundwave.classList.remove('active');
+                    progressFill.style.width = '0%';
+                });
+
+                // ═══ API CALL ═══
+                
+                function showNotification(message, type) {
+                    const el = document.getElementById('custom-notification');
+                    const msgEl = document.getElementById('notification-message');
+                    const iconEl = document.getElementById('notification-icon');
+                    
+                    msgEl.textContent = message;
+                    el.className = '';
+                    el.classList.add('show', type);
+                    
+                    if (type === 'success') {
+                        iconEl.textContent = '✨';
+                    } else {
+                        iconEl.textContent = '❌';
+                    }
+                    setTimeout(() => {
+                        el.classList.remove('show');
+                        if (type === 'success') {
+                            setTimeout(() => location.reload(), 400);
+                        }
+                    }, 2500);
+                }
+
+                window.visitPlace = async function (id) {
+                    try {
+                        const res = await fetch(`/api/places/${id}/visit`, { method: 'POST' });
+                        const data = await res.json();
+                        if (res.ok && data.success) {
+                            showNotification(data.message, 'success');
+                        } else {
+                            showNotification((data.error || 'Уже посещено'), 'error');
+                        }
+                    } catch (e) {
+                         showNotification('Ошибка сети или сервера', 'error');
+                    }
+                }
+            </script>
+<div id="custom-notification">
+<span id="notification-icon"></span>
+<span id="notification-message"></span>
+</div>
+</body>
+
+</html>

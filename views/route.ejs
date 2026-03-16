@@ -1,0 +1,529 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= route.title %> CitiVoice
+    </title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="/css/spatial.css">
+
+    <style>
+        body {
+            background-color: #050505;
+            color: #fff;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            /* Desktop split-screen shouldn't scroll globally */
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-bg {
+            position: fixed;
+            inset: -20%;
+            width: 140%;
+            height: 140%;
+            z-index: -2;
+            background-image:
+                radial-gradient(circle at 20% 40%, rgba(224, 255, 79, 0.08), transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(41, 128, 185, 0.08), transparent 40%);
+            background-color: #050505;
+            filter: blur(80px);
+        }
+
+        /* Adjust global nav to be absolute so it drops over the map */
+        .spatial-nav {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+
+        .layout-split {
+            display: block;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+        }
+
+        /* FLOATING SIDEBAR */
+        .sidebar {
+            position: absolute;
+            top: 100px;
+            left: 30px;
+            bottom: 40px;
+            width: 420px;
+            background: rgba(10, 10, 15, 0.65);
+            backdrop-filter: blur(30px) saturate(150%);
+            -webkit-backdrop-filter: blur(30px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 30px;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), 0 0 20px rgba(224, 255, 79, 0.05);
+            overflow: hidden;
+            /* Animation on load */
+            animation: slideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                top: auto;
+                left: 0;
+                bottom: 0;
+                width: 100%;
+                height: 50vh;
+                border-radius: 30px 30px 0 0;
+                animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .sidebar-header {
+            padding: 30px 30px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background: linear-gradient(180deg, rgba(224, 255, 79, 0.08) 0%, rgba(0, 0, 0, 0) 100%);
+        }
+
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            text-decoration: none;
+            margin-bottom: 20px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn-back:hover {
+            background: #E0FF4F;
+            border-color: #E0FF4F;
+            color: #000;
+            transform: scale(1.1) rotate(-5deg);
+            box-shadow: 0 10px 20px rgba(224, 255, 79, 0.3);
+        }
+
+        .route-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            background: rgba(224, 255, 79, 0.1);
+            border: 1px solid rgba(224, 255, 79, 0.3);
+            color: #E0FF4F;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 16px;
+        }
+
+        .route-title {
+            font-size: 2.8rem;
+            font-weight: 900;
+            margin: 0 0 12px 0;
+            line-height: 1.05;
+            letter-spacing: -1.5px;
+            background: linear-gradient(180deg, #FFFFFF 0%, rgba(255, 255, 255, 0.7) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .route-meta {
+            display: flex;
+            gap: 15px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .route-meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .route-desc {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.5);
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .timeline-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            scrollbar-width: none;
+        }
+
+        .timeline-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .timeline {
+            position: relative;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            bottom: 40px;
+            left: 17px;
+            width: 2px;
+            background: linear-gradient(to bottom, #E0FF4F, rgba(224, 255, 79, 0.4) 50%, transparent);
+            box-shadow: 0 0 10px rgba(224, 255, 79, 0.5);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-left: 50px;
+            margin-bottom: 24px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .timeline-item:hover {
+            transform: translateX(8px);
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: 5px;
+            top: 15px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: rgba(10, 10, 12, 0.9);
+            border: 2px solid #E0FF4F;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 900;
+            color: #E0FF4F;
+            z-index: 2;
+            box-shadow: 0 0 20px rgba(224, 255, 79, 0.6);
+            transition: all 0.3s ease;
+        }
+
+        .timeline-item:hover .timeline-dot {
+            background: #E0FF4F;
+            color: #000;
+            transform: scale(1.2);
+        }
+
+        .timeline-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            padding: 14px;
+            display: flex;
+            gap: 16px;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .timeline-item:hover .timeline-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(224, 255, 79, 0.4);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(224, 255, 79, 0.1);
+            transform: scale(1.02);
+        }
+
+        .timeline-img {
+            width: 85px;
+            height: 85px;
+            border-radius: 16px;
+            object-fit: cover;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: transform 0.4s ease;
+        }
+
+        .timeline-item:hover .timeline-img {
+            transform: scale(1.05);
+        }
+
+        .timeline-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .timeline-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .timeline-info p {
+            margin: 0;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #E0FF4F;
+        }
+
+        .map-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: #0a0a0c;
+        }
+
+        .leaflet-routing-container {
+            display: none !important;
+        }
+
+        /* Subdue the map colors slightly to match the main map */
+        .leaflet-tile-pane {
+            filter: brightness(0.85) saturate(1.1);
+        }
+
+        /* Map Marker Animation */
+        .custom-map-marker {
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .custom-map-marker:hover {
+            transform: scale(1.2);
+            z-index: 1000 !important;
+        }
+
+        .animated-route {
+            stroke-dasharray: 20;
+            animation: dash 10s linear infinite;
+        }
+
+        .glow-route {
+            filter: drop-shadow(0px 0px 8px rgba(224, 255, 79, 0.8));
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -100;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-bg"></div>
+
+    <!-- MAIN NAVIGATION -->
+    <nav class="spatial-nav glass-panel">
+        <div class="nav-brand">
+            <a href="/" style="display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit;">
+                <img src="/images/logo-icon.png" alt="Logo" style="height:24px;">
+                CitiVoice
+            </a>
+        </div>
+        <div class="nav-links">
+            <a href="/places">Места</a>
+            <a href="/routes">Маршруты</a>
+            <a href="/game">Игра</a>
+            <a href="/map">Карта</a>
+        </div>
+            <div class="nav-user">
+      <a href="<%= locals.user ? '/profile' : '/login' %>" style="color: inherit;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </a>
+    </div>
+    </nav>
+
+    <div class="layout-split">
+        <!-- Sidebar with route timeline -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <a href="/routes" class="btn-back" title="Назад к маршрутам">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
+                    </svg>
+                </a>
+                <div class="route-badge">Пеший Маршрут</div>
+                <h1 class="route-title">
+                    <%= route.title %>
+                </h1>
+                <div class="route-meta">
+                    <span>
+                        <svg width="16" height="16" fill="none" stroke="#E0FF4F" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <%= route.duration %>
+                    </span>
+                    <span>
+                        <svg width="16" height="16" fill="none" stroke="#E0FF4F" stroke-width="2">
+                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path>
+                            <circle cx="12" cy="9" r="2.5"></circle>
+                        </svg>
+                        <%= route.distance %>
+                    </span>
+                </div>
+                <p class="route-desc">
+                    <%= route.description %>
+                </p>
+            </div>
+
+            <div class="timeline-container">
+                <div class="timeline">
+                    <% route.places.forEach((place, index)=> { %>
+                        <div class="timeline-item" onclick="focusPlace(<%= place.lat %>, <%= place.lng %>)">
+                            <div class="timeline-dot">
+                                <%= index + 1 %>
+                            </div>
+                            <div class="timeline-card">
+                                <img src="<%= place.image || 'https://images.unsplash.com/photo-1542273917363-3b1817f69a5d?w=800&q=80' %>"
+                                    class="timeline-img" alt="<%= place.title %>">
+                                <div class="timeline-info">
+                                    <h3>
+                                        <%= place.title %>
+                                    </h3>
+                                    <p>
+                                        <%= place.category %>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <% }) %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interactive Map -->
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+    <script>
+        const places = <%- JSON.stringify(route.places || []) %>;
+
+        let center = [51.7682, 55.0969];
+        if (places.length > 0) {
+            center = [places[0].lat, places[0].lng];
+        }
+
+        const map = L.map('map', { zoomControl: false }).setView(center, 14);
+        L.control.zoom({ position: 'bottomright' }).addTo(map); // moved zoom to bottom right so it doesn't overlap header
+
+        // СВЕТЛЫЕ СТИЛЬНЫЕ ТАЙЛЫ (CartoDB Voyager) - чтобы было видно достопримечательности как на главной
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        const waypoints = places.map(place => L.latLng(place.lat, place.lng));
+
+        const bounds = L.latLngBounds(waypoints);
+        // Смещение влево, чтобы панель не перекрывала маршрут
+        const paddingLeft = window.innerWidth > 1024 ? 450 : 50;
+        const paddingBottom = window.innerWidth <= 1024 ? 400 : 50;
+        map.fitBounds(bounds, {
+            paddingTopLeft: [paddingLeft, 50],
+            paddingBottomRight: [50, paddingBottom]
+        });
+
+        places.forEach((place, index) => {
+            const numIcon = L.divIcon({
+                className: 'custom-map-marker',
+                html: `<div style="background:#E0FF4F; color:#000; width:32px; height:32px; border-radius:50%; text-align:center; font-weight:900; line-height:32px; border:3px solid #111; box-shadow: 0 0 20px rgba(224,255,79,0.8); font-size: 14px;">${index + 1}</div>`,
+                iconSize: [38, 38],
+                iconAnchor: [19, 19]
+            });
+
+            L.marker([place.lat, place.lng], { icon: numIcon })
+                .addTo(map)
+                .bindPopup(`<div style="font-family:sans-serif;"><b>${place.title}</b><br>${place.category}</div>`);
+        });
+
+        if (waypoints.length > 1) {
+            // Реальное построение маршрута по дорогам с помощью OSRM
+            const routingControl = L.Routing.control({
+                waypoints: waypoints,
+                lineOptions: {
+                    styles: [{ color: '#E0FF4F', opacity: 0.9, weight: 6, className: 'animated-route glow-route' }]
+                },
+                createMarker: function () { return null; }, // Скрываем дефолтные синие маркеры
+                show: false, // Скрываем панель с текстовыми шагами
+                addWaypoints: false,
+                draggableWaypoints: false,
+                fitSelectedRoutes: false
+            }).addTo(map);
+
+            // Если внешний сервер маршрутов недоступен, рисуем запасную прямую линию
+            routingControl.on('routingerror', function (e) {
+                console.warn('Сервер маршрутов недоступен, используем прямую линию.', e);
+                L.polyline(waypoints, {
+                    color: '#E0FF4F',
+                    weight: 5,
+                    opacity: 0.8,
+                    dashArray: '10, 15',
+                    dashOffset: '0'
+                }).addTo(map);
+            });
+        }
+
+        window.focusPlace = function (lat, lng) {
+            map.flyTo([lat, lng], 17, { duration: 1.2 });
+        };
+    </script>
+</body>
+
+</html>

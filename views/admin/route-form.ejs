@@ -1,0 +1,96 @@
+<%- include('_header', { pageTitle: route ? 'Редактировать маршрут' : 'Новый маршрут' }) %>
+
+    <div class="admin-header">
+        <h1>
+            <%= route ? 'Редактировать маршрут' : 'Добавить маршрут' %>
+        </h1>
+        <p><a href="/admin/routes" style="color: rgba(255,255,255,0.4); text-decoration: none;">← Назад к списку
+                маршрутов</a></p>
+    </div>
+
+    <div class="form-card" style="max-width: 780px;">
+        <% if (error) { %>
+            <div class="error-box">
+                <%= error %>
+            </div>
+            <% } %>
+
+                <form method="POST" action="<%= route ? '/admin/routes/' + route.id + '/edit' : '/admin/routes/new' %>">
+                    <div class="form-group">
+                        <label>Название *</label>
+                        <input type="text" name="title" class="form-control" required
+                            value="<%= route ? route.title : '' %>"
+                            placeholder="Например: Исторический центр Оренбурга">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Описание</label>
+                        <textarea name="description" class="form-control"
+                            placeholder="Описание маршрута..."><%= route ? (route.description || '') : '' %></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Тип маршрута</label>
+                            <select name="type" class="form-control">
+                                <option value="">— Выбрать —</option>
+                                <% const types=['walk', 'bike' , 'car' , 'mixed' ]; %>
+                                    <% types.forEach(t=> { %>
+                                        <option value="<%= t %>" <%=route && route.type===t ? 'selected' : '' %>><%= t
+                                                %>
+                                        </option>
+                                        <% }) %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Длина (например: 2.5 км)</label>
+                            <input type="text" name="distance" class="form-control"
+                                value="<%= route ? (route.distance || '') : '' %>" placeholder="5.5 км">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Длительность (например: 1.5 часа)</label>
+                            <input type="text" name="duration" class="form-control"
+                                value="<%= route ? (route.duration || '') : '' %>" placeholder="1.5 часа">
+                        </div>
+                        <div class="form-group">
+                            <label>URL изображения</label>
+                            <input type="text" name="image" class="form-control"
+                                value="<%= route ? (route.image || '') : '' %>" placeholder="/images/route.jpg">
+                        </div>
+                    </div>
+
+                    <% if (places && places.length> 0) { %>
+                        <div class="form-group">
+                            <label>Места в маршруте (отметьте нужные)</label>
+                            <div class="places-checkboxes">
+                                <% places.forEach(p=> { %>
+                                    <% const isSelected=route && route.places && route.places.some(rp=> rp.id ===
+                                        p.id); %>
+                                        <label class="place-check">
+                                            <input type="checkbox" name="placeIds" value="<%= p.id %>" <%=isSelected
+                                                ? 'checked' : '' %>>
+                                            <%= p.title %>
+                                                <% if (p.category) { %><span
+                                                        style="font-size:11px; color:rgba(255,255,255,0.35); margin-left:auto;">(
+                                                        <%= p.category %>)
+                                                    </span>
+                                                    <% } %>
+                                        </label>
+                                        <% }) %>
+                            </div>
+                        </div>
+                        <% } %>
+
+                            <div style="display: flex; gap: 12px; margin-top: 8px;">
+                                <button type="submit" class="btn btn-primary">
+                                    <%= route ? 'Сохранить изменения' : 'Создать маршрут' %>
+                                </button>
+                                <a href="/admin/routes" class="btn btn-ghost">Отмена</a>
+                            </div>
+                </form>
+    </div>
+
+    <%- include('_footer') %>

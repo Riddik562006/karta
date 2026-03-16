@@ -1,0 +1,60 @@
+<%- include('_header', { pageTitle: 'Дашборд' }) %>
+
+<div class="admin-header">
+    <h1>Панель управления</h1>
+    <p>Добро пожаловать, <%= user.username %>. Краткая сводка системы.</p>
+</div>
+
+<div class="stats-row">
+    <div class="stat-box">
+        <div class="val"><%= placesCount %></div>
+        <div class="lbl">Мест в базе</div>
+    </div>
+    <div class="stat-box">
+        <div class="val"><%= routesCount %></div>
+        <div class="lbl">Уникальных маршрутов</div>
+    </div>
+    <div class="stat-box">
+        <div class="val"><%= usersCount %></div>
+        <div class="lbl">Активных пользователей</div>
+    </div>
+</div>
+
+<div class="bento-grid">
+    <div class="admin-card bento-card">
+        <div class="admin-card-header">
+            <h2>Действия с контентом</h2>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <a href="/admin/places/new" class="btn btn-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Добавить новое место
+            </a>
+            <a href="/admin/routes/new" class="btn btn-ghost">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Собрать новый маршрут
+            </a>
+        </div>
+    </div>
+    <div class="admin-card bento-card">
+        <div class="admin-card-header">
+            <h2>Разделы базы</h2>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <a href="/admin/places" class="btn btn-ghost" style="justify-content: space-between;">
+                Управление местами
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </a>
+            <a href="/admin/routes" class="btn btn-ghost" style="justify-content: space-between;">
+                Управление маршрутами
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </a>
+            <a href="/admin/users" class="btn btn-ghost" style="justify-content: space-between;">
+                Управление пользователями
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </a>
+        </div>
+    </div>
+</div>
+
+<%- include('_footer') %>

@@ -1,0 +1,260 @@
+<% // Общая шапка для админ-панели %>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= pageTitle %>  Панель администратора</title>
+    <link rel="stylesheet" href="/css/spatial.css">
+    <style>
+        /* Base Reset */
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #fff; background: transparent; min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { text-decoration: none; color: inherit; }
+
+        /* Spatial Video Background */
+        .spatial-video-bg { 
+            position: fixed; top: -10%; left: -10%; width: 120%; height: 120%; 
+            z-index: -2; background: #000;
+        }
+        .spatial-video-bg video { 
+            width: 100%; height: 100%; object-fit: cover; 
+            filter: brightness(0.55) contrast(1.1) saturate(1.1); 
+        }
+        .spatial-vignette { 
+            position: fixed; inset: 0; 
+            background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.85) 100%); 
+            z-index: -1; pointer-events: none; 
+        }
+
+        /* Glass Variables */
+        :root {
+            --glass-panel: rgba(25, 25, 32, 0.45);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --glass-blur: blur(40px) saturate(150%);
+            --glass-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        /* Floating Layout */
+        .admin-layout {
+            display: flex; gap: 32px; padding: 32px;
+            max-width: 1600px; margin: 0 auto; min-height: 100vh;
+        }
+
+        /* App Sidebar */
+        .admin-sidebar {
+            width: 280px; flex-shrink: 0;
+            background: var(--glass-panel);
+            backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border); 
+            border-radius: 36px; padding: 32px 24px; 
+            display: flex; flex-direction: column; gap: 32px;
+            position: sticky; top: 32px; height: calc(100vh - 64px);
+            box-shadow: var(--glass-shadow);
+        }
+
+        .sidebar-logo {
+            display: flex; align-items: center; gap: 14px;
+            color: #fff; font-weight: 700; font-size: 18px; letter-spacing: -0.5px;
+        }
+        .sidebar-logo svg { color: #E0FF4F; }
+        .sidebar-logo .badge {
+            background: rgba(224, 255, 79, 0.15); color: #E0FF4F; 
+            border: 1px solid rgba(224, 255, 79, 0.3);
+            font-size: 10px; font-weight: 800; padding: 4px 8px; 
+            border-radius: 8px; text-transform: uppercase; margin-left: auto;
+        }
+
+        .sidebar-nav { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+        .sidebar-nav .section-label {
+            font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;
+            color: rgba(255, 255, 255, 0.4); padding: 16px 12px 8px; font-weight: 700;
+        }
+        .sidebar-nav a, .sidebar-footer a {
+            display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+            border-radius: 20px; color: rgba(255, 255, 255, 0.65);
+            font-size: 15px; font-weight: 600; 
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .sidebar-nav a:hover, .sidebar-footer a:hover {
+            background: rgba(255, 255, 255, 0.08); color: #fff; transform: scale(1.02);
+        }
+        .sidebar-nav a.active {
+            background: rgba(224, 255, 79, 0.15); color: #E0FF4F; 
+            border: 1px solid rgba(224, 255, 79, 0.25);
+            box-shadow: inset 0 0 20px rgba(224, 255, 79, 0.05);
+        }
+
+        .sidebar-footer { border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 24px; margin-top: auto; }
+
+        /* Main Content */
+        .admin-main { flex: 1; display: flex; flex-direction: column; gap: 32px; min-width: 0; }
+        .admin-header h1 { 
+            margin: 0 0 8px; font-size: 42px; font-weight: 800; 
+            letter-spacing: -1.5px; text-shadow: 0 4px 20px rgba(0,0,0,0.5); 
+        }
+        .admin-header p { margin: 0; color: rgba(255, 255, 255, 0.6); font-size: 16px; font-weight: 500; }
+
+        /* Glass Cards */
+        .admin-card, .stat-box, .form-card {
+            background: var(--glass-panel); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border); border-radius: 36px;
+            box-shadow: var(--glass-shadow); padding: 36px;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            overflow: hidden;
+        }
+        .stat-box:hover { transform: translateY(-8px) scale(1.02); }
+
+        .admin-card-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 28px; padding-bottom: 24px; 
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .admin-card-header h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+
+        /* Stats Blocks */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 32px; }
+        .stat-box { display: flex; flex-direction: column; justify-content: center; }
+        .stat-box .val { 
+            font-size: 56px; font-weight: 800; color: #E0FF4F; 
+            line-height: 1; letter-spacing: -2px; 
+            filter: drop-shadow(0 0 20px rgba(224, 255, 79, 0.3)); 
+        }
+        .stat-box .lbl { 
+            font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, 0.5); 
+            margin-top: 14px; text-transform: uppercase; letter-spacing: 1.5px; 
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+            padding: 16px 28px; border-radius: 20px; font-size: 15px; font-weight: 700;
+            border: none; cursor: pointer; text-decoration: none; 
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .btn-primary { 
+            background: #E0FF4F; color: #000; 
+            box-shadow: 0 10px 20px rgba(224, 255, 79, 0.3); 
+        }
+        .btn-primary:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 15px 30px rgba(224, 255, 79, 0.5); }
+        .btn-ghost { 
+            background: rgba(255, 255, 255, 0.08); color: #fff; 
+            border: 1px solid rgba(255, 255, 255, 0.15); 
+        }
+        .btn-ghost:hover { background: rgba(255, 255, 255, 0.15); transform: translateY(-4px) scale(1.02); }
+        .btn-danger { background: rgba(255, 71, 87, 0.2); color: #ff4757; border: 1px solid rgba(255, 71, 87, 0.3); }
+        .btn-danger:hover { background: rgba(255, 71, 87, 0.3); transform: scale(1.02); }
+        .btn-sm { padding: 10px 20px; font-size: 13px; border-radius: 16px; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        thead th {
+            padding: 16px 24px; text-align: left; font-size: 12px; 
+            text-transform: uppercase; letter-spacing: 1px; color: rgba(255, 255, 255, 0.4); 
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-weight: 700;
+        }
+        tbody tr { transition: all 0.2s ease; border-radius: 20px; }
+        tbody td {
+            padding: 22px 24px; font-size: 15px; color: rgba(255, 255, 255, 0.9); font-weight: 500;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        tbody tr:hover { background: rgba(255, 255, 255, 0.06); }
+        tbody tr:last-child td { border-bottom: none; }
+        .place-img-preview { width: 54px; height: 54px; border-radius: 16px; object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .role-badge { display: inline-block; padding: 6px 12px; border-radius: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        .role-admin { background: rgba(224, 255, 79, 0.2); color: #E0FF4F; border: 1px solid rgba(224, 255, 79, 0.3); }
+        .role-user { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.7); }
+
+        /* Forms */
+        .form-card { max-width: 800px; }
+        .form-group { margin-bottom: 28px; }
+        .form-group label {
+            display: block; font-size: 13px; text-transform: uppercase; 
+            letter-spacing: 1.5px; color: rgba(255, 255, 255, 0.6); 
+            font-weight: 700; margin-bottom: 12px;
+        }
+        .form-control {
+            width: 100%; background: rgba(0, 0, 0, 0.4) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important; color: #fff;
+            padding: 18px 24px; border-radius: 20px; font-size: 16px; outline: none;
+            transition: all 0.3s ease; font-family: inherit; font-weight: 500;
+        }
+        .form-control:focus { 
+            border-color: #E0FF4F !important; background: rgba(0, 0, 0, 0.6) !important; 
+            box-shadow: 0 0 0 4px rgba(224, 255, 79, 0.15); 
+        }
+        select.form-control option { background: #1a1a24; color: #fff; }
+        textarea.form-control { resize: vertical; min-height: 160px; line-height: 1.6; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+        /* Dashboard Specific Grid */
+        .bento-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+        .bento-card { display: flex; flex-direction: column; gap: 20px; }
+
+        /* Mobile Adjustments */
+        @media(max-width: 1024px) {
+            .admin-layout { flex-direction: column; padding: 16px; gap: 24px; }
+            .admin-sidebar { width: 100%; height: auto; position: static; flex-direction: row; flex-wrap: wrap; border-radius: 28px; padding: 24px; gap: 16px; align-items: center; justify-content: space-between; }
+            .sidebar-nav { flex-direction: row; overflow-x: auto; gap: 10px; flex: unset; width: 100%; }
+            .sidebar-nav .section-label { display: none; }
+            .sidebar-footer { padding: 0; border: none; margin: 0; }
+            .bento-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="spatial-video-bg">
+        <video autoplay muted loop playsinline>
+            <source src="/images/Russia%20in%204K%20-%20Incredible%20Scenes%20Hidden%20Gems%20%5Bget.gt%5D.mp4" type="video/mp4">
+        </video>
+    </div>
+    <div class="spatial-vignette"></div>
+
+    <div class="admin-layout">
+        <aside class="admin-sidebar">
+            <a href="/admin" class="sidebar-logo">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                    <line x1="8" y1="2" x2="8" y2="18"></line>
+                    <line x1="16" y1="6" x2="16" y2="22"></line>
+                </svg>
+                <span>CitiVoice</span>
+                <span class="badge">Admin</span>
+            </a>
+            <nav class="sidebar-nav">
+                <div class="section-label">Главное</div>
+                <a href="/admin" class="<%= pageTitle === 'Дашборд' ? 'active' : '' %>">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    Обзор
+                </a>
+                
+                <div class="section-label">Контент</div>
+                <a href="/admin/places" class="<%= pageTitle.includes('Мест') ? 'active' : '' %>">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    Места
+                </a>
+                <a href="/admin/routes" class="<%= pageTitle.includes('Маршрут') ? 'active' : '' %>">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 3v18h18"></path><path d="M18 9l-5-5-3 5-5-5"></path></svg>
+                    Маршруты
+                </a>
+
+                <div class="section-label">Люди</div>
+                <a href="/admin/users" class="<%= pageTitle.includes('Пользовател') ? 'active' : '' %>">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    Пользователи
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="/">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    Вернуться на сайт
+                </a>
+            </div>
+        </aside>
+        <main class="admin-main">

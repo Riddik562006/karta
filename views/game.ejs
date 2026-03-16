@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Игра-Квест CitiVoice</title>
+    <link rel="stylesheet" href="/css/spatial.css">
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: #030303;
+            font-family: 'Inter', sans-serif;
+            color: #fff;
+        }
+
+        .game-bg {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 20% 40%, rgba(224, 255, 79, 0.08), transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(41, 128, 185, 0.08), transparent 50%);
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .spatial-nav {
+            top: 20px;
+            z-index: 1000;
+        }
+
+        .quest-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .score-panel {
+            background: rgba(10, 10, 15, 0.65);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 12px 24px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            align-self: center;
+        }
+
+        .score-panel span {
+            color: #E0FF4F;
+            font-weight: 800;
+            font-size: 24px;
+            margin-left: 8px;
+            text-shadow: 0 0 10px rgba(224, 255, 79, 0.4);
+        }
+
+        .quest-card {
+            background: rgba(20, 20, 25, 0.7);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 32px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            transition: transform 0.4s ease, opacity 0.4s ease;
+            min-height: 320px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .quest-card.fade {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(224, 255, 79, 0.1);
+            color: #E0FF4F;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            align-self: center;
+            border: 1px solid rgba(224, 255, 79, 0.3);
+        }
+
+        .fact-text {
+            font-size: 18px;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .question-text {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 30px;
+        }
+
+        .btn-action {
+            background: #E0FF4F;
+            color: #000;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            align-self: center;
+            box-shadow: 0 0 15px rgba(224, 255, 79, 0.4);
+            margin-top: auto;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 0 25px rgba(224, 255, 79, 0.7);
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .option-btn {
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 16px;
+            border-radius: 16px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .option-btn:disabled {
+            cursor: default;
+        }
+
+        .option-btn.correct {
+            background: rgba(224, 255, 79, 0.2);
+            border-color: #E0FF4F;
+            color: #E0FF4F;
+            box-shadow: 0 0 20px rgba(224, 255, 79, 0.3);
+        }
+
+        .option-btn.wrong {
+            background: rgba(255, 79, 79, 0.2);
+            border-color: #FF4F4F;
+            color: #FF4F4F;
+        }
+
+        .result-message {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            margin-top: 0;
+        }
+
+        .result-message.success {
+            color: #E0FF4F;
+            text-shadow: 0 0 15px rgba(224, 255, 79, 0.5);
+        }
+
+        .result-message.fail {
+            color: #FF4F4F;
+            text-shadow: 0 0 15px rgba(255, 79, 79, 0.5);
+        }
+
+        .result-subtext {
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        @media (max-width: 600px) {
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="game-bg"></div>
+
+    <nav class="spatial-nav glass-panel">
+        <div class="nav-brand">
+            <a href="/" style="display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit;">
+                <img src="/images/logo-icon.png" alt="Logo" style="height:24px;">CitiVoice
+            </a>
+        </div>
+        <div class="nav-links">
+            <a href="/places">Места</a>
+            <a href="/routes">Маршруты</a>
+            <a href="/game" class="active">Игра</a>
+            <a href="/map">Карта</a>
+        </div>
+        <div class="nav-user">
+            <a href="<%= locals.user ? '/profile' : '/login' %>" style="color: inherit;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </a>
+        </div>
+    </nav>
+
+    <div class="quest-container">
+        <div class="score-panel" id="scorePanel" style="display:none;">
+            Очки знаний: <span id="scoreEl">0</span>
+        </div>
+
+        <div class="quest-card" id="uiContainer">
+            <!-- Content dynamically rendered here -->
+        </div>
+    </div>
+
+    <script>
+        const quests = [
+            {
+                fact: "Оренбург задумывался как окно в Азию и закладывался целых три раза в разных местах! Сначала в 1735 году у слияния рек Орь и Урал, затем в 1739-м в урочище Красная Гора, и наконец, в 1743 году на своем историческом, нынешнем месте.",
+                question: "Сколько раз закладывался город Оренбург до того, как остался на нынешнем месте?",
+                options: ["Один раз", "Два раза", "Три раза", "Четыре раза"],
+                correct: 2
+            },
+            {
+                fact: "Через реку Урал в Оренбурге проходит знаменитый пешеходный мост (Беловка). Он уникален тем, что является символической границей между двумя частями света. Прямо на мосту стоит знак, у которого можно сфотографироваться.",
+                question: "Какие части света соединяет знаменитый пешеходный мост в Оренбурге?",
+                options: ["Европу и Азию", "Россию и Казахстан", "Европу и Африку", "Север и Юг"],
+                correct: 0
+            },
+            {
+                fact: "Оренбургское высшее военное авиационное Краснознаменное училище им. И.С. Полбина выпустило множество выдающихся пилотов. Один из выпускников навсегда вошел в историю человечества 12 апреля 1961 года.",
+                question: "Кто из знаменитых людей учился в Оренбургском летном училище?",
+                options: ["Валерий Чкалов", "Алексей Леонов", "Юрий Гагарин", "Михаил Громов"],
+                correct: 2
+            },
+            {
+                fact: "Оренбургский пуховый платок — один из всемирно известных символов России. Настоящий платок ручной работы паутинной вязки, несмотря на свои большие размеры, удивительно компактен и легок.",
+                question: "Через что должен проходить настоящий оренбургский пуховый платок, чтобы доказать свою тонкость?",
+                options: ["Через игольное ушко", "Через обручальное кольцо", "Через браслет", "Через горлышко бутылки"],
+                correct: 1
+            },
+            {
+                fact: "С 1938 по 1957 год Оренбург носил имя выдающегося советского летчика, который, как ни странно, сам ни разу не был в этом городе. Его имя было присвоено в знак признания государственных заслуг.",
+                question: "Какое имя носил город Оренбург в советское время?",
+                options: ["Гагарин", "Свердловск", "Чкалов", "Куйбышев"],
+                correct: 2
+            }
+        ];
+
+        let score = 0;
+        let availableQuests = [...quests];
+        let currentQuest = null;
+
+        const uiContainer = document.getElementById('uiContainer');
+        const scorePanel = document.getElementById('scorePanel');
+        const scoreEl = document.getElementById('scoreEl');
+
+        function animateTransition(renderFn) {
+            uiContainer.classList.add('fade');
+            setTimeout(() => {
+                renderFn();
+                uiContainer.classList.remove('fade');
+            }, 400);
+        }
+
+        function renderStartScreen() {
+            uiContainer.innerHTML = `
+                <div class="badge">Локальный Квест</div>
+                <h1 style="margin-top:0;">Исследователь Оренбурга</h1>
+                <p style="color: rgba(255,255,255,0.7); margin-bottom: 40px; font-size: 16px;">
+                    Узнавай интересные факты о городе, отвечай на вопросы и получай баллы знаний. Готов начать экспедицию?
+                </p>
+                <button class="btn-action" onclick="nextQuest()">Начать квест</button>
+            `;
+        }
+
+        function nextQuest() {
+            scorePanel.style.display = 'block';
+            if (availableQuests.length === 0) {
+                animateTransition(renderFinishScreen);
+                return;
+            }
+            // Выбираем случайный квест
+            const randomIndex = Math.floor(Math.random() * availableQuests.length);
+            currentQuest = availableQuests[randomIndex];
+            availableQuests.splice(randomIndex, 1); // Убираем из массива
+
+            animateTransition(() => renderFactScreen(currentQuest));
+        }
+
+        function renderFactScreen(quest) {
+            uiContainer.innerHTML = `
+                <div class="badge">Интересный факт</div>
+                <div class="fact-text">${quest.fact}</div>
+                <button class="btn-action" onclick="showQuestion()">Понятно, к вопросу!</button>
+            `;
+        }
+
+        window.showQuestion = function () {
+            animateTransition(() => {
+                let optionsHtml = '';
+                currentQuest.options.forEach((opt, index) => {
+                    optionsHtml += `<button class="option-btn" onclick="checkAnswer(${index}, this)">${opt}</button>`;
+                });
+
+                uiContainer.innerHTML = `
+                    <div class="badge">Вопрос</div>
+                    <div class="question-text">${currentQuest.question}</div>
+                    <div class="options-grid">
+                        ${optionsHtml}
+                    </div>
+                `;
+            });
+        }
+
+        window.checkAnswer = function (selectedIndex, btnElement) {
+            // Отключаем все кнопки
+            const allBtns = document.querySelectorAll('.option-btn');
+            allBtns.forEach(btn => btn.disabled = true);
+
+            const isCorrect = selectedIndex === currentQuest.correct;
+
+            if (isCorrect) {
+                btnElement.classList.add('correct');
+                score += 100;
+                scoreEl.innerText = score;
+                // Save EXP to profile
+                fetch('/api/user/exp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ expEarned: 100 })
+                }).catch(err => console.error(err));
+            } else {
+                btnElement.classList.add('wrong');
+                // Подсвечиваем правильный
+                allBtns[currentQuest.correct].classList.add('correct');
+            }
+
+            setTimeout(() => {
+                animateTransition(() => renderResultScreen(isCorrect));
+            }, 1200);
+        }
+
+        function renderResultScreen(isCorrect) {
+            if (isCorrect) {
+                uiContainer.innerHTML = `
+                    <h2 class="result-message success">Правильно!</h2>
+                    <p class="result-subtext">+100 очков знаний в вашу копилку.</p>
+                    <button class="btn-action" onclick="nextQuest()">Следующий факт</button>
+                `;
+            } else {
+                uiContainer.innerHTML = `
+                    <h2 class="result-message fail">Ошибка</h2>
+                    <p class="result-subtext">Ничего страшного, зато теперь вы точно знаете правильный ответ!</p>
+                    <button class="btn-action" onclick="nextQuest()">Продолжить</button>
+                `;
+            }
+        }
+
+        function renderFinishScreen() {
+            uiContainer.innerHTML = `
+                <div class="badge">Квест завершен</div>
+                <h2 style="color: #E0FF4F; margin-bottom: 10px;">Поздравляем!</h2>
+                <p style="color: rgba(255,255,255,0.7); font-size: 18px; margin-bottom: 30px;">
+                    Вы расшифровали все факты об Оренбурге. Ваш итоговый счет: <b style="color:white;">${score}</b> очков.
+                </p>
+                <div style="display:flex; justify-content:center; gap: 16px;">
+                    <button class="btn-action" style="background: rgba(255,255,255,0.1); color: white; box-shadow: none;" onclick="window.location.href='/'">На главную</button>
+                    <button class="btn-action" onclick="location.reload()">Сыграть еще раз</button>
+                </div>
+            `;
+        }
+
+        // Инициализация
+        renderStartScreen();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,73 @@
+<%- include('_header', { pageTitle: 'Пользователи' }) %>
+
+    <div class="admin-header">
+        <h1>Пользователи</h1>
+        <p>Просматривайте и управляйте ролями пользователей.</p>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h2>Все пользователи (<%= users.length %>)</h2>
+        </div>
+        <% if (users.length===0) { %>
+            <div style="text-align: center; padding: 60px; color: rgba(255,255,255,0.3); font-size: 15px;">
+                Пользователей нет.</div>
+            <% } else { %>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Пользователь</th>
+                            <th>Уровень</th>
+                            <th>Опыт</th>
+                            <th>Роль</th>
+                            <th>Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% users.forEach((u, i)=> { %>
+                            <tr>
+                                <td style="color: rgba(255,255,255,0.3);">
+                                    <%= u.id %>
+                                </td>
+                                <td>
+                                    <div style="font-weight: 600;">
+                                        <%= u.username %>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span
+                                        style="background: rgba(224,255,79,0.1); color: #E0FF4F; padding: 3px 10px; border-radius: 8px; font-size: 13px; font-weight: 700;">
+                                        <%= u.level %> ур.
+                                    </span>
+                                </td>
+                                <td style="color: rgba(255,255,255,0.6);">
+                                    <%= u.exp %> EXP
+                                </td>
+                                <td>
+                                    <span class="role-badge <%= u.role %>">
+                                        <%= u.role %>
+                                    </span>
+                                </td>
+                                <td>
+                                    <% if (u.id !==user.id) { %>
+                                        <form method="POST" action="/admin/users/<%= u.id %>/role" style="margin: 0;"
+                                            onsubmit="return confirm('<%= u.role === 'admin' ? 'Разжаловать ' + u.username + ' до обычного пользователя?' : 'Назначить ' + u.username + ' администратором?' %>')">
+                                            <button type="submit"
+                                                class="btn btn-sm <%= u.role === 'admin' ? 'btn-danger' : 'btn-ghost' %>">
+                                                <%= u.role==='admin' ? 'Убрать роль' : 'Дать админку' %>
+                                            </button>
+                                        </form>
+                                        <% } else { %>
+                                            <span style="font-size: 12px; color: rgba(255,255,255,0.25);">Это
+                                                вы</span>
+                                            <% } %>
+                                </td>
+                            </tr>
+                            <% }) %>
+                    </tbody>
+                </table>
+                <% } %>
+    </div>
+
+    <%- include('_footer') %>

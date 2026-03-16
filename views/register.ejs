@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - CitiVoice</title>
+    <link rel="stylesheet" href="/css/spatial.css">
+    <style>
+        body {
+            background-color: #030303;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .auth-container {
+            background: rgba(20, 20, 25, 0.7);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 32px;
+            padding: 50px 40px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        }
+
+        .auth-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 14px 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: #E0FF4F;
+        }
+
+        .btn-action {
+            width: 100%;
+            background: #E0FF4F;
+            color: #000;
+            border: none;
+            padding: 16px;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(224, 255, 79, 0.4);
+        }
+
+        .error-message {
+            color: #FF4F4F;
+            font-size: 14px;
+            margin-bottom: 20px;
+            background: rgba(255, 79, 79, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .switch-link {
+            color: rgba(255, 255, 255, 0.6);
+            display: inline-block;
+            margin-top: 20px;
+            font-size: 14px;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .switch-link:hover {
+            color: #E0FF4F;
+        }
+
+        .spatial-nav {
+            top: 20px;
+            z-index: 1000;
+            position: fixed;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="spatial-nav glass-panel"
+        style="left:50%; transform:translateX(-50%); width: calc(100% - 40px); max-width: 1200px; display:flex; justify-content:space-between;">
+        <div class="nav-brand">
+            <a href="/" style="display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit;">
+                <img src="/images/logo-icon.png" alt="Logo" style="height:24px;">CitiVoice
+            </a>
+        </div>
+        <div class="nav-links">
+            <a href="/places">Места</a>
+            <a href="/routes">Маршруты</a>
+            <a href="/game">Игра</a>
+            <a href="/map">Карта</a>
+        </div>
+        <div class="nav-user">
+            <a href="<%= locals.user ? '/profile' : '/login' %>" style="color: inherit;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </a>
+        </div>
+    </nav>
+
+    <div class="auth-container">
+        <h1 class="auth-title">Создать аккаунт</h1>
+
+        <% if (locals.error) { %>
+            <div class="error-message">
+                <%= error %>
+            </div>
+            <% } %>
+
+                <form action="/register" method="POST">
+                    <div class="form-group">
+                        <input type="text" name="username" class="form-control" placeholder="Имя пользователя" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" name="password" class="form-control" placeholder="Пароль" required
+                            minlength="4">
+                    </div>
+                    <button type="submit" class="btn-action">Зарегистрироваться</button>
+                </form>
+
+                <a href="/login" class="switch-link">Уже есть аккаунт? Войти</a>
+    </div>
+
+</body>
+
+</html>

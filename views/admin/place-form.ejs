@@ -1,0 +1,80 @@
+<%- include('_header', { pageTitle: place ? 'Редактировать место' : 'Новое место' }) %>
+
+    <div class="admin-header">
+        <h1>
+            <%= place ? 'Редактировать место' : 'Добавить место' %>
+        </h1>
+        <p><a href="/admin/places" style="color: rgba(255,255,255,0.4); text-decoration: none;">← Назад к списку
+                мест</a></p>
+    </div>
+
+    <div class="form-card">
+        <% if (error) { %>
+            <div class="error-box">
+                <%= error %>
+            </div>
+            <% } %>
+
+                <form method="POST" action="<%= place ? '/admin/places/' + place.id + '/edit' : '/admin/places/new' %>">
+                    <div class="form-group">
+                        <label>Название *</label>
+                        <input type="text" name="title" class="form-control" required
+                            value="<%= place ? place.title : '' %>" placeholder="Например: Набережная реки Урал">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Описание</label>
+                        <textarea name="description" class="form-control"
+                            placeholder="Описание места..."><%= place ? (place.description || '') : '' %></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Категория</label>
+                            <select name="category" class="form-control">
+                                <option value="">— Выбрать —</option>
+                                <% const cats=['architecture', 'bridge' , 'cultural' , 'history' , 'nature' , 'other' ];
+                                    %>
+                                    <% cats.forEach(c=> { %>
+                                        <option value="<%= c %>" <%=place && place.category===c ? 'selected' : '' %>
+                                            ><%= c %>
+                                        </option>
+                                        <% }) %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Город</label>
+                            <input type="text" name="city" class="form-control"
+                                value="<%= place ? (place.city || '') : 'Оренбург' %>" placeholder="Оренбург">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Широта (lat)</label>
+                            <input type="number" name="lat" step="any" class="form-control"
+                                value="<%= place ? (place.lat || '') : '' %>" placeholder="51.7686">
+                        </div>
+                        <div class="form-group">
+                            <label>Долгота (lng)</label>
+                            <input type="number" name="lng" step="any" class="form-control"
+                                value="<%= place ? (place.lng || '') : '' %>" placeholder="55.0974">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>URL изображения</label>
+                        <input type="text" name="image" class="form-control"
+                            value="<%= place ? (place.image || '') : '' %>" placeholder="https://...">
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 8px;">
+                        <button type="submit" class="btn btn-primary">
+                            <%= place ? 'Сохранить изменения' : 'Создать место' %>
+                        </button>
+                        <a href="/admin/places" class="btn btn-ghost">Отмена</a>
+                    </div>
+                </form>
+    </div>
+
+    <%- include('_footer') %>

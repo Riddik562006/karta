@@ -1,0 +1,67 @@
+<%- include('_header', { pageTitle: 'Места' }) %>
+
+    <div class="admin-header">
+        <h1>Места</h1>
+        <p>Добавляйте, редактируйте и удаляйте места на карте.</p>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h2>Все места (<%= places.length %>)</h2>
+            <a href="/admin/places/new" class="btn btn-primary btn-sm">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Добавить
+            </a>
+        </div>
+        <% if (places.length===0) { %>
+            <div style="text-align: center; padding: 60px; color: rgba(255,255,255,0.3); font-size: 15px;">Мест пока
+                нет. Добавьте первое!</div>
+            <% } else { %>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Название</th>
+                            <th>Категория</th>
+                            <th>Город</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% places.forEach((place, i)=> { %>
+                            <tr>
+                                <td style="color: rgba(255,255,255,0.3);">
+                                    <%= place.id %>
+                                </td>
+                                <td><strong>
+                                        <%= place.title %>
+                                    </strong></td>
+                                <td><span
+                                        style="background: rgba(255,255,255,0.07); padding: 3px 10px; border-radius: 8px; font-size: 12px;">
+                                        <%= place.category || '—' %>
+                                    </span></td>
+                                <td>
+                                    <%= place.city || '—' %>
+                                </td>
+                                <td>
+                                    <div style="display: flex; gap: 8px;">
+                                        <a href="/admin/places/<%= place.id %>/edit"
+                                            class="btn btn-ghost btn-sm">Ред.</a>
+                                        <form method="POST" action="/admin/places/<%= place.id %>/delete"
+                                            onsubmit="return confirm('Удалить место «<%= place.title %>»?')"
+                                            style="margin: 0;">
+                                            <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            <% }) %>
+                    </tbody>
+                </table>
+                <% } %>
+    </div>
+
+    <%- include('_footer') %>

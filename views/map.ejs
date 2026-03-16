@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Карта — CitiVoice</title>
+    <link rel="stylesheet" href="/css/spatial.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .map-page {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Fullscreen Map */
+        #map {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Subdue the map colors slightly to let UI pop */
+        .leaflet-tile-pane {
+            filter: brightness(0.85) saturate(1.1);
+        }
+
+        /* Vignette overlay to darken edges specifically where UI elements live */
+        .map-vignette {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            box-shadow: inset 0 0 150px rgba(0, 0, 0, 0.7);
+            z-index: 500;
+        }
+
+        /* Floating Nav overrides - keeping it consistent with Spatial style but placing it above map */
+        .spatial-nav {
+            top: 20px;
+            z-index: 1000;
+            background: rgba(15, 15, 20, 0.85) !important;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+        }
+
+        /* Floating Filters (Bento Style Bottom Dock) */
+        .spatial-filters {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 24px;
+            border-radius: 100px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            /* Inherits .glass-panel from spatial.css, but we tweak specifically for map */
+            background: rgba(15, 15, 20, 0.85);
+            backdrop-filter: blur(25px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .spatial-filters {
+                width: 90%;
+                flex-wrap: wrap;
+                justify-content: center;
+                border-radius: 24px;
+                bottom: 20px;
+                padding: 16px;
+            }
+        }
+
+        .filter-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 100px;
+            border: 1px solid transparent;
+            background: rgba(255, 255, 255, 0.05);
+            color: #ccc;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .filter-btn .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: #555;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            transform: translateY(-2px);
+        }
+
+        .filter-btn.active {
+            background: #fff;
+            color: #000;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+        }
+
+        .filter-btn.active .dot {
+            box-shadow: 0 0 10px currentColor;
+            /* glow effect */
+        }
+
+        /* Fix Colors for Active States (Specific dots) */
+        .filter-btn[data-cat="architecture"].active .dot {
+            background: #e67e22;
+        }
+
+        .filter-btn[data-cat="nature"].active .dot {
+            background: #27ae60;
+        }
+
+        .filter-btn[data-cat="history"].active .dot {
+            background: #8e44ad;
+        }
+
+        .filter-btn[data-cat="bridge"].active .dot {
+            background: #2980b9;
+        }
+
+        .filter-btn[data-cat="cultural"].active .dot {
+            background: #e84393;
+        }
+
+        /* Disable map controls standard background */
+        .leaflet-control-zoom a {
+            background: rgba(40, 40, 50, 0.6) !important;
+            backdrop-filter: blur(20px);
+            color: #fff !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background: rgba(60, 60, 70, 0.8) !important;
+        }
+
+        /* Dark spatial popup */
+        .leaflet-popup-content-wrapper {
+            background: rgba(28, 28, 35, 0.7) !important;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px !important;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+            color: #fff !important;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .leaflet-popup-tip {
+            background: rgba(28, 28, 35, 0.7) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .leaflet-popup-content {
+            margin: 0;
+            width: 260px !important;
+        }
+
+        .popup-img-wrap {
+            height: 140px;
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .popup-img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .popup-img-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(28, 28, 35, 1), transparent);
+        }
+
+        .popup-body {
+            padding: 0 20px 20px;
+            margin-top: -10px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .popup-category {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+            color: var(--accent, #E0FF4F);
+            /* Using exact spatial.css variable */
+        }
+
+        .popup-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 8px;
+            line-height: 1.2;
+        }
+
+        .popup-desc {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .popup-link {
+            display: inline-block;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            background: #fff;
+            color: #000;
+            padding: 8px 20px;
+            border-radius: 100px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .popup-link:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(255, 255, 255, 0.2);
+        }
+
+        .leaflet-container a.leaflet-popup-close-button {
+            color: #fff !important;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+            font-size: 20px;
+            padding: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="map-page">
+        <!-- VIGNETTE TO DARKEN EDGES AND FOCUS UI -->
+        <div class="map-vignette"></div>
+
+        <!-- FLOATING NAVIGATION (Spatial Style) -->
+            <nav class="spatial-nav glass-panel">
+        <div class="nav-brand">
+            <a href="/" style="display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit;">
+                <img src="/images/logo-icon.png" alt="Logo" style="height:24px;">
+                CitiVoice
+            </a>
+        </div>
+        <div class="nav-links">
+            <a href="/places">Места</a>
+            <a href="/#routes">Маршруты</a>
+            <a href="/game">Игра</a>
+            <a href="/map">Карта</a>
+        </div>
+            <div class="nav-user">
+      <a href="<%= locals.user ? '/profile' : '/login' %>" style="color: inherit;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </a>
+    </div>
+    </nav>
+
+        <!-- FLOATING FILTERS (Spatial Dock) -->
+        <div class="spatial-filters">
+            <button class="filter-btn active" data-cat="all">
+                <span class="dot" style="background:#fff;"></span> Все
+            </button>
+            <button class="filter-btn" data-cat="architecture">
+                <span class="dot"></span> Архитектура
+            </button>
+            <button class="filter-btn" data-cat="bridge">
+                <span class="dot"></span> Мосты
+            </button>
+            <button class="filter-btn" data-cat="nature">
+                <span class="dot"></span> Природа
+            </button>
+            <button class="filter-btn" data-cat="history">
+                <span class="dot"></span> История
+            </button> <button class="filter-btn" data-cat="cultural">
+                <span class="dot"></span> Культура
+            </button>
+        </div>
+
+        <!-- FULLSCREEN MAP -->
+        <div id="map"></div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Init map
+        const map = L.map('map', {
+            center: [51.7727, 55.0988],
+            zoom: 13,
+            zoomControl: false // Disable default, we move it later
+        });
+
+        // Add zoom control at bottom right to get it out of the way
+        L.control.zoom({
+            position: 'bottomright'
+        }).addTo(map);
+
+        // СВЕТЛЫЕ СТИЛЬНЫЕ ТАЙЛЫ (CartoDB Voyager) - чтобы было видно достопримечательности
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        // Category configs
+        const categories = {
+            architecture: {
+                color: '#e67e22', label: 'Архитектура',
+                svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="16" height="16"><path d="M6 19h3v-6h6v6h3v-9l-6-4.5L6 10v9zm-2 2V9l8-6 8 6v12h-7v-6h-2v6H4z"/></svg>`
+            },
+            bridge: {
+                color: '#2980b9', label: 'Мосты',
+                svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="16" height="16"><path d="M2 19v-2h2v-6c0-1.4.47-2.63 1.41-3.67L3 4.93l1.41-1.41 16.97 16.97-1.41 1.41-2.83-2.83c-.05.01-.09.03-.14.03H14v2h-2v-2h-2v2H8v-2H5.12l-1.29 1.29L2 20.41 2 19zm3-2h.17l8.33-8.34C13.19 8.26 12.63 8 12 8c-2.21 0-4 1.79-4 4v5H5v0zm11.41 0l-5.26-5.26A5.02 5.02 0 0 1 17 17h-1v-.59zM12 4c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z"/></svg>`
+            },
+            nature: {
+                color: '#27ae60', label: 'Природа',
+                svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="16" height="16"><path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20c4 0 4-2 8-2s4 2 8 2v-2c-4 0-4-2-8-2c-.57 0-1.1.04-1.6.11C14.55 11.58 17 8 17 8z"/></svg>`
+            },
+            history: {
+                color: '#8e44ad', label: 'История',
+                svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="16" height="16"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 14H8v-2h8v2zm0-4H8v-2h8v2zm0-4H8V6h8v2z"/></svg>`
+            },
+            cultural: {
+                color: '#e84393', label: 'Культура',
+                svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="16" height="16"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>`
+            }
+        };
+
+        function createIcon(cat) {
+            const c = categories[cat];
+            return L.divIcon({
+                className: '',
+                html: `<div style="
+                    width:38px; height:46px; position:relative;
+                    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6));
+                    transition: transform 0.2s;
+                " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                    <svg viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M17 0C8.16 0 1 7.16 1 16c0 10.5 14.36 24.5 15.24 25.33a1 1 0 0 0 1.52 0C18.64 40.5 33 26.5 33 16 33 7.16 25.84 0 17 0z" fill="${c.color}"/>
+                        <circle cx="17" cy="15" r="10" fill="rgba(0,0,0,0.25)"/>
+                    </svg>
+                    <div style="
+                        position:absolute; top:7px; left:11px;
+                        width:16px; height:16px;
+                        display:flex; align-items:center; justify-content:center;
+                    ">${c.svg}</div>
+                </div>`,
+                iconSize: [38, 46],
+                iconAnchor: [19, 46],
+                popupAnchor: [0, -48]
+            });
+        }
+
+        const markers = [];
+
+        async function loadPlaces(category = 'all') {
+            try {
+                // Remove old markers
+                markers.forEach(m => map.removeLayer(m));
+                markers.length = 0;
+
+                const query = category === 'all' ? '' : `?category=${category}`;
+                const res = await fetch(`/api/places${query}`);
+                const places = await res.json();
+
+                places.forEach(place => {
+                    if (place.lat && place.lng) {
+                        const icon = createIcon(place.category);
+                        const marker = L.marker([place.lat, place.lng], { icon }).addTo(map);
+
+                        const popupHtml = `
+                            <div class="popup-img-wrap">
+                                <img src="${place.image || place.image_url || '/images/placeholder.jpg'}" alt="${place.title}">
+                                <div class="popup-img-overlay"></div>
+                            </div>
+                            <div class="popup-body">
+                                <div class="popup-category" style="color: ${categories[place.category].color}">${categories[place.category].label}</div>
+                                <div class="popup-title">${place.title}</div>
+                                ${place.short_description ? `<div class="popup-desc">${place.short_description}</div>` : ''}
+                                ${place.description && !place.short_description ? `<div class="popup-desc">${place.description.substring(0, 60)}...</div>` : ''}
+                                <a href="/place/${place.id}" class="popup-link">Подробнее &rarr;</a>
+                            </div>
+                        `;
+
+                        marker.bindPopup(popupHtml);
+                        markers.push(marker);
+                    }
+                });
+            } catch (err) {
+                console.error("Error loading places:", err);
+            }
+        }
+
+        // Init load
+        loadPlaces();
+
+        // Filters logic
+        const buttons = document.querySelectorAll('.filter-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                buttons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                loadPlaces(btn.getAttribute('data-cat'));
+            });
+        });
+    </script>
+</body>
+
+</html>
