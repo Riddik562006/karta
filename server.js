@@ -509,9 +509,37 @@ async function ensureContentSeeded() {
   }
 }
 
+async function ensureAdminExists() {
+  const bcryptjs = require('bcryptjs');
+  const adminEmail = 'admin@citivoice.local';
+  const adminPassword = 'admin12345';
+
+  try {
+    let admin = await User.findOne({ where: { email: adminEmail } });
+
+    if (!admin) {
+      const hashedPassword = await bcryptjs.hash(adminPassword, 10);
+      admin = await User.create({
+        email: adminEmail,
+        username: 'admin',
+        password: hashedPassword,
+        role: 'admin',
+        level: 1,
+        exp: 0
+      });
+      console.log('✅ Администратор создан автоматически при запуске!');
+      console.log(`   Email: ${adminEmail}`);
+      console.log(`   Password: ${adminPassword}`);
+    }
+  } catch (error) {
+    console.error('⚠️  Ошибка при создании админа:', error.message);
+  }
+}
+
 sequelize.sync().then(async () => {
   await ensureUserSchema();
   await ensureContentSeeded();
+  await ensureAdminExists();
 
   app.listen(PORT, () => {
     console.log(`CitiVoice server is running on http://localhost:${PORT}`);
