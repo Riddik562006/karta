@@ -44,15 +44,12 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// --- Middleware РґР»СЏ Р·Р°С‰РёС‚С‹ РјР°СЂС€СЂСѓС‚РѕРІ ---
 
-// РўСЂРµР±СѓРµС‚, С‡С‚РѕР±С‹ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ Р±С‹Р» Р·Р°Р»РѕРіРёРЅРµРЅ
 function requireAuth(req, res, next) {
   if (!req.user) return res.redirect('/login');
   next();
 }
 
-// РўСЂРµР±СѓРµС‚ СЂРѕР»СЊ admin
 function requireAdmin(req, res, next) {
   if (!req.user) return res.redirect('/login');
   if (req.user.role !== 'admin') return res.status(403).render('403');
@@ -164,12 +161,12 @@ app.get('/api/places/:id', async (req, res) => {
   res.json(place);
 });
 
-// API: РѕС‚РјРµС‚РёС‚СЊ РјРµСЃС‚Рѕ РєР°Рє РїРѕСЃРµС‰РµРЅРЅРѕРµ (РґРѕР±Р°РІР»РµРЅРёРµ Р·Р°РїРёСЃРё РІ 5-СЋ С‚Р°Р±Р»РёС†Сѓ)
+
 app.post('/api/places/:id/visit', requireAuth, async (req, res) => {
   try {
     const placeId = req.params.id;
     const userId = req.user.id;
-    // РџСЂРѕРІРµСЂРёРј, РЅРµ РѕС‚РјРµС‡Р°Р»Рё Р»Рё СѓР¶Рµ
+
     const existing = await Visit.findOne({ where: { PlaceId: parseInt(placeId, 10), UserId: parseInt(userId, 10) } });
     if (existing) {
       return res.status(400).json({ error: 'Вы уже отмечали это место!' });
@@ -177,7 +174,6 @@ app.post('/api/places/:id/visit', requireAuth, async (req, res) => {
 
     await Visit.create({ PlaceId: parseInt(placeId, 10), UserId: parseInt(userId, 10) });
 
-    // РќР°С‡РёСЃР»РёС‚СЊ Р±РѕРЅСѓСЃРЅС‹Р№ РѕРїС‹С‚ Р·Р° РїРѕСЃРµС‰РµРЅРёРµ!
     req.user.exp += 50;
     req.user.level = Math.floor(req.user.exp / 100) + 1;
     await req.user.save();
@@ -188,13 +184,11 @@ app.post('/api/places/:id/visit', requireAuth, async (req, res) => {
   }
 });
 
-// РЎС‚СЂР°РЅРёС†Р° РІСЃРµС… РјР°СЂС€СЂСѓС‚РѕРІ (РљР°С‚Р°Р»РѕРі РјР°СЂС€СЂСѓС‚РѕРІ)
 app.get('/routes', async (req, res) => {
   const routes = await Route.findAll();
   res.render('routes', { routes });
 });
 
-// РЎС‚СЂР°РЅРёС†Р° РѕРґРЅРѕРіРѕ РјР°СЂС€СЂСѓС‚Р°
 app.get('/routes/:id', async (req, res) => {
   const route = await Route.findByPk(req.params.id, {
     include: [{
@@ -211,8 +205,43 @@ app.get('/routes/:id', async (req, res) => {
 
   res.render('route', { route });
 });
+app.get('/routes', async (req, res) => {
+  const routes = await Route.findAll();
+  res.render('routes', { routes });
+});
 
-// ============ ADMIN PANEL ============
+app.get('/routes/:id', async (req, res) => {
+  const route = await Route.findByPk(req.params.id, {
+    include: [{
+      model: Place,
+      as: 'places',
+      through: { attributes: ['order'] }
+    }],
+    order: [
+      [{ model: Place, as: 'places' }, Route.sequelize.models.RoutePlace, 'order', 'ASC']
+    ]
+  });
+  if (!route) return res.status(404).send('Маршрут не найден');
+  res.render('route', { route });
+});app.get('/routes', async (req, res) => {
+  const routes = await Route.findAll();
+  res.render('routes', { routes });
+});
+
+app.get('/routes/:id', async (req, res) => {
+  const route = await Route.findByPk(req.params.id, {
+    include: [{
+      model: Place,
+      as: 'places',
+      through: { attributes: ['order'] }
+    }],
+    order: [
+      [{ model: Place, as: 'places' }, Route.sequelize.models.RoutePlace, 'order', 'ASC']
+    ]
+  });
+  if (!route) return res.status(404).send('Маршрут не найден');
+  res.render('route', { route });
+});
 
 app.get('/admin', requireAdmin, async (req, res) => {
   const placesCount = await Place.count();

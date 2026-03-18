@@ -811,8 +811,6 @@
                 const pingStyle = document.createElement('style');
                 pingStyle.textContent = `@keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }`;
                 document.head.appendChild(pingStyle);
-
-                // ═══ AUDIO ═══
                 const audio = new Audio('/audio/<%= place.id %>.mp3');
                 const audioCard = document.getElementById('audioCard');
                 const iconPlay = document.getElementById('iconPlay');
