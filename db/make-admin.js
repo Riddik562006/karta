@@ -1,6 +1,5 @@
 const sequelize = require('./index');
 const User = require('../models/User');
-const bcryptjs = require('bcryptjs');
 
 async function createOrUpdateAdmin() {
     try {
@@ -14,15 +13,12 @@ async function createOrUpdateAdmin() {
         const adminPassword = 'admin12345';
         const adminUsername = 'admin';
 
-        // Хешируем пароль
-        const hashedPassword = await bcryptjs.hash(adminPassword, 10);
-
         // Ищем существующего админа по email
         let admin = await User.findOne({ where: { email: adminEmail } });
 
         if (admin) {
             // Обновляем существующего админа
-            admin.password = hashedPassword;
+            admin.password = adminPassword;
             admin.role = 'admin';
             admin.level = 1;
             await admin.save();
@@ -33,7 +29,7 @@ async function createOrUpdateAdmin() {
             if (admin) {
                 // Обновляем username-based админа
                 admin.email = adminEmail;
-                admin.password = hashedPassword;
+                admin.password = adminPassword;
                 admin.role = 'admin';
                 admin.level = 1;
                 await admin.save();
@@ -43,7 +39,7 @@ async function createOrUpdateAdmin() {
                 admin = await User.create({
                     email: adminEmail,
                     username: adminUsername,
-                    password: hashedPassword,
+                    password: adminPassword,
                     role: 'admin',
                     level: 1,
                     exp: 0

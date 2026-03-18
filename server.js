@@ -510,24 +510,45 @@ async function ensureContentSeeded() {
 }
 
 async function ensureAdminExists() {
-  const bcryptjs = require('bcryptjs');
   const adminEmail = 'admin@citivoice.local';
   const adminPassword = 'admin12345';
+  const adminUsername = 'admin';
 
   try {
     let admin = await User.findOne({ where: { email: adminEmail } });
+    if (!admin) {
+      admin = await User.findOne({ where: { username: adminUsername } });
+    }
 
     if (!admin) {
-      const hashedPassword = await bcryptjs.hash(adminPassword, 10);
       admin = await User.create({
         email: adminEmail,
-        username: 'admin',
-        password: hashedPassword,
+        username: adminUsername,
+        password: adminPassword,
         role: 'admin',
         level: 1,
         exp: 0
       });
       console.log('✅ Администратор создан автоматически при запуске!');
+      console.log(`   Email: ${adminEmail}`);
+      console.log(`   Password: ${adminPassword}`);
+      return;
+    }
+
+    const hasDefaultPassword = await admin.validPassword(adminPassword);
+    const shouldUpdate =
+      admin.email !== adminEmail ||
+      admin.role !== 'admin' ||
+      admin.level !== 1 ||
+      !hasDefaultPassword;
+
+    if (shouldUpdate) {
+      admin.email = adminEmail;
+      admin.role = 'admin';
+      admin.level = 1;
+      admin.password = adminPassword;
+      await admin.save();
+      console.log('✅ Администратор обновлён автоматически при запуске.');
       console.log(`   Email: ${adminEmail}`);
       console.log(`   Password: ${adminPassword}`);
     }
