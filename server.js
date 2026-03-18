@@ -8,6 +8,7 @@ const session = require('express-session');
 const User = require('./models/User');
 const UserAlias = require('./models/UserAlias');
 const Visit = require('./models/Visit');
+const { ensureSeedData } = require('./db/seed-data');
 
 
 const app = express();
@@ -498,8 +499,19 @@ async function ensureUserSchema() {
   }
 }
 
+async function ensureContentSeeded() {
+  const placesCount = await Place.count();
+  const routesCount = await Route.count();
+
+  if (placesCount === 0 || routesCount === 0) {
+    await ensureSeedData();
+    console.log('Стартовые места и маршруты восстановлены автоматически.');
+  }
+}
+
 sequelize.sync().then(async () => {
   await ensureUserSchema();
+  await ensureContentSeeded();
 
   app.listen(PORT, () => {
     console.log(`CitiVoice server is running on http://localhost:${PORT}`);
