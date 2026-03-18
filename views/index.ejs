@@ -110,89 +110,101 @@
         <h3 style="margin:0 0 16px;">Интересные локации</h3>
 
         <style>
+          .modern-loc-list {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            width: 100%;
+          }
+
+          .modern-loc-item {
+            position: relative;
+            height: 120px;
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s;
+          }
+
+          .modern-loc-item:hover {
+            transform: translateY(-4px) scale(1.02);
+            border-color: rgba(224, 255, 79, 0.4);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(224, 255, 79, 0.15);
+          }
+
+          .modern-loc-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+          }
+
+          .modern-loc-item:hover .modern-loc-img {
+            transform: scale(1.1);
+          }
+
+          .modern-loc-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.2) 60%, rgba(0, 0, 0, 0) 100%);
+            display: flex;
+            align-items: flex-end;
+            padding: 12px;
+          }
+
+          .modern-loc-title {
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.3;
+            font-family: inherit;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.8);
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+
+          @media (max-width: 768px) {
             .modern-loc-list {
-              display: grid;
-              grid-template-columns: repeat(4, 1fr);
-              gap: 12px;
-              width: 100%;
-            }
-            .modern-loc-item {
-              position: relative;
-              height: 120px;
-              border-radius: 16px;
-              overflow: hidden;
-              cursor: pointer;
-              border: 1px solid rgba(255, 255, 255, 0.08);
-              transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s;
-            }
-            .modern-loc-item:hover {
-              transform: translateY(-4px) scale(1.02);
-              border-color: rgba(224, 255, 79, 0.4);
-              box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 15px rgba(224, 255, 79, 0.15);
-            }
-            .modern-loc-img {
-              width: 100%;
-              height: 100%;
-              object-fit: cover;
-              transition: transform 0.5s ease;
-            }
-            .modern-loc-item:hover .modern-loc-img {
-              transform: scale(1.1);
-            }
-            .modern-loc-overlay {
-              position: absolute;
-              inset: 0;
-              background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 60%, rgba(0,0,0,0) 100%);
               display: flex;
-              align-items: flex-end;
-              padding: 12px;
+              overflow-x: auto;
+              scroll-snap-type: x mandatory;
+              padding-bottom: 10px;
             }
-            .modern-loc-title {
-              color: #fff;
-              font-size: 13px;
-              font-weight: 700;
-              line-height: 1.3;
-              font-family: inherit;
-              text-shadow: 0 2px 5px rgba(0,0,0,0.8);
-              display: -webkit-box;
-              -webkit-line-clamp: 3;
-              -webkit-box-orient: vertical;
-              overflow: hidden;
-            }
-            @media (max-width: 768px) {
-              .modern-loc-list {
-                display: flex;
-                overflow-x: auto;
-                scroll-snap-type: x mandatory;
-                padding-bottom: 10px;
-              }
-              .modern-loc-list::-webkit-scrollbar {
-                display: none;
-              }
-              .modern-loc-item {
-                flex: 0 0 130px;
-                scroll-snap-align: start;
-              }
-            }
-          </style>
 
-          <div class="modern-loc-list">
-            <% if (locals.popularPlaces && popularPlaces.length > 0) { %>
-              <% popularPlaces.forEach(place => { %>
-                <div class="modern-loc-item" onclick="window.location.href='/place/<%= place.id %>'">
-                  <img src="<%= place.image || '/images/places.jpg' %>" alt="<%= place.title %>" class="modern-loc-img" onerror="this.src='/images/places.jpg'">
-                  <div class="modern-loc-overlay">
-                    <span class="modern-loc-title"><%= place.title %></span>
-                  </div>
+            .modern-loc-list::-webkit-scrollbar {
+              display: none;
+            }
+
+            .modern-loc-item {
+              flex: 0 0 130px;
+              scroll-snap-align: start;
+            }
+          }
+        </style>
+
+        <div class="modern-loc-list">
+          <% if (locals.popularPlaces && popularPlaces.length> 0) { %>
+            <% popularPlaces.forEach(place=> { %>
+              <div class="modern-loc-item" onclick="window.location.href='/place/<%= place.id %>'">
+                <img src="<%= place.image || '/images/places.jpg' %>" alt="<%= place.title %>" class="modern-loc-img"
+                  onerror="this.src='/images/places.jpg'">
+                <div class="modern-loc-overlay">
+                  <span class="modern-loc-title">
+                    <%= place.title %>
+                  </span>
                 </div>
+              </div>
               <% }) %>
-            <% } else { %>
-              <p style="font-size: 13px; color: rgba(255,255,255,0.5);">Нет мест</p>
-            <% } %>
-          </div>
-
+                <% } else { %>
+                  <p style="font-size: 13px; color: rgba(255,255,255,0.5);">Нет мест</p>
+                  <% } %>
         </div>
-      </section>
+
+      </div>
+    </section>
 
     <!-- WEATHER WIDGET -->
     <section class="glass-panel card-weather">

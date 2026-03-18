@@ -1,5 +1,127 @@
 <%- include('_header', { pageTitle: place ? 'Редактировать место' : 'Новое место' }) %>
 
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .coords-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: -8px;
+            margin-bottom: 6px;
+        }
+
+        .coords-hint {
+            margin-top: 8px;
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 12px;
+        }
+
+        .map-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .map-modal.is-open {
+            display: flex;
+        }
+
+        .map-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
+        }
+
+        .map-modal-card {
+            position: relative;
+            width: min(960px, 100%);
+            background: rgba(18, 20, 30, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+            overflow: hidden;
+        }
+
+        .map-modal-head {
+            padding: 18px 20px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .map-modal-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .map-modal-subtitle {
+            margin: 5px 0 0;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .map-modal-body {
+            padding: 14px 20px 0;
+        }
+
+        #pickerMap {
+            width: 100%;
+            height: 420px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .map-picked {
+            margin: 12px 2px 0;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.68);
+        }
+
+        .map-picked strong {
+            color: #E0FF4F;
+            font-weight: 800;
+        }
+
+        .map-modal-footer {
+            padding: 16px 20px 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-map-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.85);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .btn-map-close:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        @media (max-width: 640px) {
+            #pickerMap {
+                height: 320px;
+            }
+        }
+    </style>
+
     <div class="admin-header">
         <h1>
             <%= place ? 'Редактировать место' : 'Добавить место' %>
@@ -52,15 +174,21 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Широта (lat)</label>
-                            <input type="number" name="lat" step="any" class="form-control"
+                            <input type="number" id="latInput" name="lat" step="any" class="form-control"
                                 value="<%= place ? (place.lat || '') : '' %>" placeholder="51.7686">
                         </div>
                         <div class="form-group">
                             <label>Долгота (lng)</label>
-                            <input type="number" name="lng" step="any" class="form-control"
+                            <input type="number" id="lngInput" name="lng" step="any" class="form-control"
                                 value="<%= place ? (place.lng || '') : '' %>" placeholder="55.0974">
                         </div>
                     </div>
+
+                    <div class="coords-actions">
+                        <button type="button" id="openMapPicker" class="btn btn-ghost">Выбрать на карте</button>
+                    </div>
+                    <div class="coords-hint">Нажмите «Выбрать на карте», кликните точку и координаты заполнятся
+                        автоматически.</div>
 
                     <div class="form-group">
                         <label>URL изображения</label>
@@ -76,5 +204,150 @@
                     </div>
                 </form>
     </div>
+
+    <div class="map-modal" id="mapModal">
+        <div class="map-modal-backdrop" id="mapModalBackdrop"></div>
+        <div class="map-modal-card">
+            <div class="map-modal-head">
+                <div>
+                    <h3 class="map-modal-title">Выбор координат</h3>
+                    <p class="map-modal-subtitle">Кликните на карту, затем нажмите «Применить координаты».</p>
+                </div>
+                <button type="button" class="btn-map-close" id="closeMapPicker" aria-label="Закрыть">×</button>
+            </div>
+            <div class="map-modal-body">
+                <div id="pickerMap"></div>
+                <div class="map-picked" id="pickedPointLabel">Точка не выбрана</div>
+            </div>
+            <div class="map-modal-footer">
+                <button type="button" class="btn btn-ghost" id="cancelMapPicker">Отмена</button>
+                <button type="button" class="btn btn-primary" id="applyMapPoint">Применить координаты</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const latInput = document.getElementById('latInput');
+        const lngInput = document.getElementById('lngInput');
+
+        const mapModal = document.getElementById('mapModal');
+        const mapModalBackdrop = document.getElementById('mapModalBackdrop');
+        const openMapPicker = document.getElementById('openMapPicker');
+        const closeMapPicker = document.getElementById('closeMapPicker');
+        const cancelMapPicker = document.getElementById('cancelMapPicker');
+        const applyMapPoint = document.getElementById('applyMapPoint');
+        const pickedPointLabel = document.getElementById('pickedPointLabel');
+
+        let pickerMap;
+        let pickerMarker;
+        let selectedPoint = null;
+        const ORENBURG_POINT = { lat: 51.7686, lng: 55.0974 };
+
+        function parseFloatSafe(value) {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : null;
+        }
+
+        function isUnsetCoords(lat, lng) {
+            return lat === null || lng === null || (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001);
+        }
+
+        function updateSelectedPointLabel() {
+            if (!selectedPoint) {
+                pickedPointLabel.textContent = 'Точка не выбрана';
+                return;
+            }
+
+            pickedPointLabel.innerHTML = `Выбрано: <strong>${selectedPoint.lat.toFixed(6)}</strong>, <strong>${selectedPoint.lng.toFixed(6)}</strong>`;
+        }
+
+        function ensureMapInitialized() {
+            if (pickerMap) {
+                return;
+            }
+
+            pickerMap = L.map('pickerMap', {
+                zoomControl: true
+            });
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(pickerMap);
+
+            pickerMap.on('click', (event) => {
+                selectedPoint = {
+                    lat: event.latlng.lat,
+                    lng: event.latlng.lng
+                };
+
+                if (!pickerMarker) {
+                    pickerMarker = L.marker([selectedPoint.lat, selectedPoint.lng]).addTo(pickerMap);
+                } else {
+                    pickerMarker.setLatLng([selectedPoint.lat, selectedPoint.lng]);
+                }
+
+                updateSelectedPointLabel();
+            });
+        }
+
+        function openModal() {
+            mapModal.classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+
+            ensureMapInitialized();
+
+            const currentLat = parseFloatSafe(latInput.value);
+            const currentLng = parseFloatSafe(lngInput.value);
+
+            if (!isUnsetCoords(currentLat, currentLng)) {
+                selectedPoint = { lat: currentLat, lng: currentLng };
+            } else if (!selectedPoint) {
+                selectedPoint = { ...ORENBURG_POINT };
+            }
+
+            pickerMap.setView([selectedPoint.lat, selectedPoint.lng], 13);
+
+            if (!pickerMarker) {
+                pickerMarker = L.marker([selectedPoint.lat, selectedPoint.lng]).addTo(pickerMap);
+            } else {
+                pickerMarker.setLatLng([selectedPoint.lat, selectedPoint.lng]);
+            }
+
+            updateSelectedPointLabel();
+
+            setTimeout(() => {
+                pickerMap.invalidateSize();
+            }, 50);
+        }
+
+        function closeModal() {
+            mapModal.classList.remove('is-open');
+            document.body.style.overflow = '';
+        }
+
+        openMapPicker.addEventListener('click', openModal);
+        closeMapPicker.addEventListener('click', closeModal);
+        cancelMapPicker.addEventListener('click', closeModal);
+        mapModalBackdrop.addEventListener('click', closeModal);
+
+        applyMapPoint.addEventListener('click', () => {
+            if (!selectedPoint) {
+                return;
+            }
+
+            latInput.value = selectedPoint.lat.toFixed(6);
+            lngInput.value = selectedPoint.lng.toFixed(6);
+            closeModal();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && mapModal.classList.contains('is-open')) {
+                closeModal();
+            }
+        });
+    </script>
 
     <%- include('_footer') %>
