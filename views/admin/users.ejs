@@ -18,6 +18,7 @@
                         <tr>
                             <th>#</th>
                             <th>Пользователь</th>
+                            <th>Email</th>
                             <th>Уровень</th>
                             <th>Опыт</th>
                             <th>Роль</th>
@@ -34,6 +35,9 @@
                                     <div style="font-weight: 600;">
                                         <%= u.username %>
                                     </div>
+                                </td>
+                                <td style="color: rgba(255,255,255,0.7);">
+                                    <%= u.email || '—' %>
                                 </td>
                                 <td>
                                     <span
@@ -55,7 +59,8 @@
                                             <a href="/admin/users/<%= u.id %>/edit" class="btn btn-sm btn-ghost">
                                                 Редактировать
                                             </a>
-                                            <form method="POST" action="/admin/users/<%= u.id %>/delete" style="margin: 0;"
+                                            <form method="POST" action="/admin/users/<%= u.id %>/delete"
+                                                style="margin: 0;"
                                                 onsubmit="return confirm('Удалить пользователя <%= u.username %>? Это действие нельзя отменить.')">
                                                 <button type="submit" class="btn btn-sm btn-danger">
                                                     Удалить

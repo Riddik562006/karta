@@ -3,6 +3,11 @@ const sequelize = require('../db');
 const bcrypt = require('bcryptjs');
 
 const User = sequelize.define('User', {
+    email: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        unique: true
+    },
     username: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -39,6 +44,11 @@ const User = sequelize.define('User', {
             // Генерация стартового токена при регистрации
             const rawToken = require('crypto').randomBytes(32).toString('hex');
             user.token = await bcrypt.hash(rawToken, 10);
+        },
+        beforeUpdate: async (user) => {
+            if (user.changed('password')) {
+                user.password = await bcrypt.hash(user.password, 10);
+            }
         }
     }
 });

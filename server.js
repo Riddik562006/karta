@@ -1,21 +1,23 @@
 ﻿const express = require('express');
 const path = require('path');
 const sequelize = require('./db');
+const { DataTypes } = require('sequelize');
 const Place = require('./models/Place');
 const { Route } = require('./models/Route');
 const session = require('express-session');
 const User = require('./models/User');
-const Visit = require('./models/Visit'); // РџРѕРґРєР»СЋС‡Р°РµРј РЅР°С€Сѓ 5-СЋ С‚Р°Р±Р»РёС†Сѓ
+const UserAlias = require('./models/UserAlias');
+const Visit = require('./models/Visit');
 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// РќР°СЃС‚СЂРѕР№РєР° EJS РєР°Рє view engine
+// Настройка EJS как view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// РЎС‚Р°С‚РёС‡РµСЃРєРёРµ С„Р°Р№Р»С‹
+// Статические файлы
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -56,8 +58,14 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+function normalizeEmail(value) {
+  return (value || '').trim().toLowerCase();
+}
 
-// РњР°СЂС€СЂСѓС‚С‹
+function isValidEmail(value) {
+  return /^\S+@\S+\.\S+$/.test(value);
+}
+
 
 // AUTH
 app.get('/login', (req, res) => res.render('login', { error: null }));
@@ -65,29 +73,67 @@ app.get('/register', (req, res) => res.render('register', { error: null }));
 
 app.post('/register', async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const existing = await User.findOne({ where: { username } });
-    if (existing) return res.render('register', { error: 'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚' });
+    const email = normalizeEmail(req.body.email);
+    const username = (req.body.username || '').trim();
+    const password = req.body.password || '';
 
-    const user = await User.create({ username, password });
+    if (!isValidEmail(email)) {
+      return res.render('register', { error: 'Введите корректный email' });
+    }
+
+    if (username.length < 3 || username.length > 32) {
+      return res.render('register', { error: 'Имя пользователя должно быть от 3 до 32 символов' });
+    }
+
+    if (!password || password.length < 4) {
+      return res.render('register', { error: 'Пароль должен быть не короче 4 символов' });
+    }
+
+    const existingEmail = await User.findOne({ where: { email } });
+    if (existingEmail) return res.render('register', { error: 'Пользователь с таким email уже существует' });
+
+    const existing = await User.findOne({ where: { username } });
+    if (existing) return res.render('register', { error: 'Пользователь уже существует' });
+
+    const existingAlias = await UserAlias.findOne({ where: { alias: username } });
+    if (existingAlias) return res.render('register', { error: 'Этот логин уже занят' });
+
+    const user = await User.create({ email, username, password });
     req.session.userId = user.id;
     res.redirect('/');
   } catch (e) {
-    res.render('register', { error: 'РћС€РёР±РєР° СЂРµРіРёСЃС‚СЂР°С†РёРё' });
+    res.render('register', { error: 'Ошибка регистрации' });
   }
 });
 
 app.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const user = await User.findOne({ where: { username } });
+    const emailOrLogin = (req.body.email || '').trim();
+    const normalizedEmail = normalizeEmail(emailOrLogin);
+    const password = req.body.password || '';
+
+    if (!emailOrLogin || !password) {
+      return res.render('login', { error: 'Введите email и пароль' });
+    }
+
+    let user = await User.findOne({ where: { email: normalizedEmail } });
+    if (!user) {
+      user = await User.findOne({ where: { username: emailOrLogin } });
+    }
+    if (!user) {
+      const aliasRecord = await UserAlias.findOne({ where: { alias: emailOrLogin } });
+      if (aliasRecord) {
+        user = await User.findByPk(aliasRecord.UserId);
+      }
+    }
+
     if (!user || !(await user.validPassword(password))) {
-      return res.render('login', { error: 'РќРµРІРµСЂРЅРѕРµ РёРјСЏ РёР»Рё РїР°СЂРѕР»СЊ' });
+      return res.render('login', { error: 'Неверный email (или логин) или пароль' });
     }
     req.session.userId = user.id;
     res.redirect('/');
   } catch (e) {
-    res.render('login', { error: 'РћС€РёР±РєР° РІС…РѕРґР°' });
+    res.render('login', { error: 'Ошибка входа' });
   }
 });
 
@@ -123,9 +169,9 @@ app.post('/api/user/exp', requireAuth, async (req, res) => {
 });
 
 app.get('/', async (req, res) => {
-    const popularPlaces = await Place.findAll({ limit: 4 });
-    res.render('index', { title: 'CitiVoice - Interactive City Map', popularPlaces });
-  });
+  const popularPlaces = await Place.findAll({ limit: 4 });
+  res.render('index', { title: 'CitiVoice - Interactive City Map', popularPlaces });
+});
 
 app.get('/game', (req, res) => {
   res.render('game');
@@ -133,20 +179,20 @@ app.get('/game', (req, res) => {
 
 app.get('/map', (req, res) => { res.render('map'); });
 
-// РЎС‚СЂР°РЅРёС†Р° РІСЃРµС… РјРµСЃС‚ (РљР°С‚Р°Р»РѕРі)
+// Страница всех мест (каталог)
 app.get('/places', async (req, res) => {
   const places = await Place.findAll();
   res.render('places', { places });
 });
 
-// РЎС‚СЂР°РЅРёС†Р° РѕРґРЅРѕРіРѕ РјРµСЃС‚Р°
+// Страница одного места
 app.get('/place/:id', async (req, res) => {
   const place = await Place.findByPk(req.params.id);
-  if (!place) return res.status(404).send('РњРµСЃС‚Рѕ РЅРµ РЅР°Р№РґРµРЅРѕ');
+  if (!place) return res.status(404).send('Место не найдено');
   res.render('place', { place });
 });
 
-// API: РїРѕР»СѓС‡РёС‚СЊ РІСЃРµ РјРµСЃС‚Р°
+// API: получить все места
 app.get('/api/places', async (req, res) => {
   const { category } = req.query;
   const where = category ? { category } : {};
@@ -154,10 +200,10 @@ app.get('/api/places', async (req, res) => {
   res.json(places);
 });
 
-// API: РїРѕР»СѓС‡РёС‚СЊ РѕРґРЅРѕ РјРµСЃС‚Рѕ
+// API: получить одно место
 app.get('/api/places/:id', async (req, res) => {
   const place = await Place.findByPk(req.params.id);
-  if (!place) return res.status(404).json({ error: 'РќРµ РЅР°Р№РґРµРЅРѕ' });
+  if (!place) return res.status(404).json({ error: 'Не найдено' });
   res.json(place);
 });
 
@@ -201,45 +247,8 @@ app.get('/routes/:id', async (req, res) => {
     ]
   });
 
-  if (!route) return res.status(404).send('РњР°СЂС€СЂСѓС‚ РЅРµ РЅР°Р№РґРµРЅ');
-
-  res.render('route', { route });
-});
-app.get('/routes', async (req, res) => {
-  const routes = await Route.findAll();
-  res.render('routes', { routes });
-});
-
-app.get('/routes/:id', async (req, res) => {
-  const route = await Route.findByPk(req.params.id, {
-    include: [{
-      model: Place,
-      as: 'places',
-      through: { attributes: ['order'] }
-    }],
-    order: [
-      [{ model: Place, as: 'places' }, Route.sequelize.models.RoutePlace, 'order', 'ASC']
-    ]
-  });
   if (!route) return res.status(404).send('Маршрут не найден');
-  res.render('route', { route });
-});app.get('/routes', async (req, res) => {
-  const routes = await Route.findAll();
-  res.render('routes', { routes });
-});
 
-app.get('/routes/:id', async (req, res) => {
-  const route = await Route.findByPk(req.params.id, {
-    include: [{
-      model: Place,
-      as: 'places',
-      through: { attributes: ['order'] }
-    }],
-    order: [
-      [{ model: Place, as: 'places' }, Route.sequelize.models.RoutePlace, 'order', 'ASC']
-    ]
-  });
-  if (!route) return res.status(404).send('Маршрут не найден');
   res.render('route', { route });
 });
 
@@ -250,7 +259,7 @@ app.get('/admin', requireAdmin, async (req, res) => {
   res.render('admin/index', { placesCount, routesCount, usersCount });
 });
 
-// --- РњРµСЃС‚Р° ---
+// --- Места ---
 app.get('/admin/places', requireAdmin, async (req, res) => {
   const places = await Place.findAll({ order: [['id', 'ASC']] });
   res.render('admin/places', { places });
@@ -266,26 +275,26 @@ app.post('/admin/places/new', requireAdmin, async (req, res) => {
     await Place.create({ title, description, category, lat: parseFloat(lat), lng: parseFloat(lng), city, image });
     res.redirect('/admin/places');
   } catch (e) {
-    res.render('admin/place-form', { place: req.body, error: 'РћС€РёР±РєР° РїСЂРё СЃРѕС…СЂР°РЅРµРЅРёРё: ' + e.message + (e.errors ? ' - ' + e.errors.map(err => err.message).join(', ') : '') });
+    res.render('admin/place-form', { place: req.body, error: 'Ошибка при сохранении: ' + e.message + (e.errors ? ' - ' + e.errors.map(err => err.message).join(', ') : '') });
   }
 });
 
 app.get('/admin/places/:id/edit', requireAdmin, async (req, res) => {
   const place = await Place.findByPk(req.params.id);
-  if (!place) return res.status(404).send('РќРµ РЅР°Р№РґРµРЅРѕ');
+  if (!place) return res.status(404).send('Не найдено');
   res.render('admin/place-form', { place, error: null });
 });
 
 app.post('/admin/places/:id/edit', requireAdmin, async (req, res) => {
   try {
     const place = await Place.findByPk(req.params.id);
-    if (!place) return res.status(404).send('РќРµ РЅР°Р№РґРµРЅРѕ');
+    if (!place) return res.status(404).send('Не найдено');
     const { title, description, category, lat, lng, city, image } = req.body;
     await place.update({ title, description, category, lat: parseFloat(lat), lng: parseFloat(lng), city, image });
     res.redirect('/admin/places');
   } catch (e) {
     const place = await Place.findByPk(req.params.id);
-    res.render('admin/place-form', { place, error: 'РћС€РёР±РєР° РїСЂРё СЃРѕС…СЂР°РЅРµРЅРёРё: ' + e.message + (e.errors ? ' - ' + e.errors.map(err => err.message).join(', ') : '') });
+    res.render('admin/place-form', { place, error: 'Ошибка при сохранении: ' + e.message + (e.errors ? ' - ' + e.errors.map(err => err.message).join(', ') : '') });
   }
 });
 
@@ -295,7 +304,7 @@ app.post('/admin/places/:id/delete', requireAdmin, async (req, res) => {
   res.redirect('/admin/places');
 });
 
-// --- РњР°СЂС€СЂСѓС‚С‹ ---
+// --- Маршруты ---
 app.get('/admin/routes', requireAdmin, async (req, res) => {
   const routes = await Route.findAll({ order: [['id', 'ASC']] });
   res.render('admin/routes', { routes });
@@ -320,13 +329,13 @@ app.post('/admin/routes/new', requireAdmin, async (req, res) => {
     res.redirect('/admin/routes');
   } catch (e) {
     const places = await Place.findAll({ order: [['title', 'ASC']] });
-    res.render('admin/route-form', { route: req.body, places, error: 'РћС€РёР±РєР°: ' + e.message + (e.errors ? ' - ' + e.errors.map(err => err.message).join(', ') : '') });
+    res.render('admin/route-form', { route: req.body, places, error: 'Ошибка: ' + e.message + (e.errors ? ' - ' + e.errors.map(err => err.message).join(', ') : '') });
   }
 });
 
 app.get('/admin/routes/:id/edit', requireAdmin, async (req, res) => {
   const route = await Route.findByPk(req.params.id, { include: [{ model: Place, as: 'places' }] });
-  if (!route) return res.status(404).send('РќРµ РЅР°Р№РґРµРЅРѕ');
+  if (!route) return res.status(404).send('Не найдено');
   const places = await Place.findAll({ order: [['title', 'ASC']] });
   res.render('admin/route-form', { route, places, error: null });
 });
@@ -334,7 +343,7 @@ app.get('/admin/routes/:id/edit', requireAdmin, async (req, res) => {
 app.post('/admin/routes/:id/edit', requireAdmin, async (req, res) => {
   try {
     const route = await Route.findByPk(req.params.id);
-    if (!route) return res.status(404).send('РќРµ РЅР°Р№РґРµРЅРѕ');
+    if (!route) return res.status(404).send('Не найдено');
     const { title, description, image, duration, distance, type, placeIds } = req.body;
     await route.update({ title, description, image, duration, distance, type: type || 'walk' });
     const { RoutePlace } = require('./models/Route');
@@ -349,7 +358,7 @@ app.post('/admin/routes/:id/edit', requireAdmin, async (req, res) => {
   } catch (e) {
     const places = await Place.findAll({ order: [['title', 'ASC']] });
     const route = await Route.findByPk(req.params.id, { include: [{ model: Place, as: 'places' }] });
-    res.render('admin/route-form', { route, places, error: 'РћС€РёР±РєР°: ' + e.message + (e.errors ? ' - ' + e.errors.map(err => err.message).join(', ') : '') });
+    res.render('admin/route-form', { route, places, error: 'Ошибка: ' + e.message + (e.errors ? ' - ' + e.errors.map(err => err.message).join(', ') : '') });
   }
 });
 
@@ -359,7 +368,7 @@ app.post('/admin/routes/:id/delete', requireAdmin, async (req, res) => {
   res.redirect('/admin/routes');
 });
 
-// --- РџРѕР»СЊР·РѕРІР°С‚РµР»Рё ---
+// --- Пользователи ---
 app.get('/admin/users', requireAdmin, async (req, res) => {
   const users = await User.findAll({ order: [['id', 'ASC']] });
   res.render('admin/users', { users });
@@ -376,37 +385,67 @@ app.post('/admin/users/:id/edit', requireAdmin, async (req, res) => {
   const managedUser = await User.findByPk(req.params.id);
   if (!managedUser) return res.status(404).send('Пользователь не найден');
 
+  const previousUsername = managedUser.username;
+  const email = normalizeEmail(req.body.email);
   const username = (req.body.username || '').trim();
   const role = req.body.role === 'admin' ? 'admin' : 'user';
 
-  if (!username) {
+  if (!isValidEmail(email)) {
     return res.render('admin/user-form', {
       managedUser,
-      error: 'Имя пользователя не может быть пустым'
+      error: 'Введите корректный email'
+    });
+  }
+
+  if (!username || username.length < 3 || username.length > 32) {
+    return res.render('admin/user-form', {
+      managedUser: { ...managedUser.toJSON(), email, username, role },
+      error: 'Имя пользователя должно быть от 3 до 32 символов'
+    });
+  }
+
+  const existingEmail = await User.findOne({ where: { email } });
+  if (existingEmail && existingEmail.id !== managedUser.id) {
+    return res.render('admin/user-form', {
+      managedUser: { ...managedUser.toJSON(), email, username, role },
+      error: 'Пользователь с таким email уже существует'
     });
   }
 
   const existingUser = await User.findOne({ where: { username } });
   if (existingUser && existingUser.id !== managedUser.id) {
-    managedUser.username = username;
-    managedUser.role = role;
     return res.render('admin/user-form', {
-      managedUser,
+      managedUser: { ...managedUser.toJSON(), email, username, role },
       error: 'Пользователь с таким именем уже существует'
     });
   }
 
-  if (managedUser.id === req.user.id && role !== 'admin') {
-    managedUser.username = username;
+  const existingAlias = await UserAlias.findOne({ where: { alias: username } });
+  if (existingAlias && existingAlias.UserId !== managedUser.id) {
     return res.render('admin/user-form', {
-      managedUser,
+      managedUser: { ...managedUser.toJSON(), email, username, role },
+      error: 'Этот логин уже занят в истории логинов другого пользователя'
+    });
+  }
+
+  if (managedUser.id === req.user.id && role !== 'admin') {
+    return res.render('admin/user-form', {
+      managedUser: { ...managedUser.toJSON(), email, username, role },
       error: 'Нельзя снять роль администратора у самого себя'
     });
   }
 
+  managedUser.email = email;
   managedUser.username = username;
   managedUser.role = role;
   await managedUser.save();
+
+  if (previousUsername !== username) {
+    await UserAlias.findOrCreate({
+      where: { alias: previousUsername },
+      defaults: { alias: previousUsername, UserId: managedUser.id }
+    });
+  }
 
   res.redirect('/admin/users');
 });
@@ -433,8 +472,35 @@ app.post('/admin/users/:id/delete', requireAdmin, async (req, res) => {
 
 // ============ END ADMIN PANEL ============
 
-// РЎРёРЅС…СЂРѕРЅРёР·Р°С†РёСЏ Р‘Р” Рё Р·Р°РїСѓСЃРє СЃРµСЂРІРµСЂР°
-sequelize.sync().then(() => {
+// Синхронизация БД и запуск сервера
+async function ensureUserSchema() {
+  const queryInterface = sequelize.getQueryInterface();
+  const usersTable = await queryInterface.describeTable('Users');
+
+  if (!usersTable.email) {
+    await queryInterface.addColumn('Users', 'email', {
+      type: DataTypes.STRING,
+      allowNull: true
+    });
+  }
+
+  try {
+    await queryInterface.addIndex('Users', ['email'], {
+      name: 'users_email_unique_idx',
+      unique: true
+    });
+  } catch (error) {
+    const message = String(error.message || '').toLowerCase();
+    const isKnown = message.includes('already exists') || message.includes('duplicate key name') || message.includes('relation "users_email_unique_idx" already exists');
+    if (!isKnown) {
+      console.warn('Не удалось создать уникальный индекс по email:', error.message);
+    }
+  }
+}
+
+sequelize.sync().then(async () => {
+  await ensureUserSchema();
+
   app.listen(PORT, () => {
     console.log(`CitiVoice server is running on http://localhost:${PORT}`);
   });
