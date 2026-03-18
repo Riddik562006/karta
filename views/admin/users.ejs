@@ -2,7 +2,7 @@
 
     <div class="admin-header">
         <h1>Пользователи</h1>
-        <p>Просматривайте и управляйте ролями пользователей.</p>
+        <p>Просматривайте пользователей, редактируйте никнеймы, роли и удаляйте аккаунты.</p>
     </div>
 
     <div class="admin-card">
@@ -51,13 +51,17 @@
                                 </td>
                                 <td>
                                     <% if (u.id !==user.id) { %>
-                                        <form method="POST" action="/admin/users/<%= u.id %>/role" style="margin: 0;"
-                                            onsubmit="return confirm('<%= u.role === 'admin' ? 'Разжаловать ' + u.username + ' до обычного пользователя?' : 'Назначить ' + u.username + ' администратором?' %>')">
-                                            <button type="submit"
-                                                class="btn btn-sm <%= u.role === 'admin' ? 'btn-danger' : 'btn-ghost' %>">
-                                                <%= u.role==='admin' ? 'Убрать роль' : 'Дать админку' %>
-                                            </button>
-                                        </form>
+                                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                            <a href="/admin/users/<%= u.id %>/edit" class="btn btn-sm btn-ghost">
+                                                Редактировать
+                                            </a>
+                                            <form method="POST" action="/admin/users/<%= u.id %>/delete" style="margin: 0;"
+                                                onsubmit="return confirm('Удалить пользователя <%= u.username %>? Это действие нельзя отменить.')">
+                                                <button type="submit" class="btn btn-sm btn-danger">
+                                                    Удалить
+                                                </button>
+                                            </form>
+                                        </div>
                                         <% } else { %>
                                             <span style="font-size: 12px; color: rgba(255,255,255,0.25);">Это
                                                 вы</span>

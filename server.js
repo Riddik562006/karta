@@ -365,12 +365,69 @@ app.get('/admin/users', requireAdmin, async (req, res) => {
   res.render('admin/users', { users });
 });
 
+app.get('/admin/users/:id/edit', requireAdmin, async (req, res) => {
+  const managedUser = await User.findByPk(req.params.id);
+  if (!managedUser) return res.status(404).send('Пользователь не найден');
+
+  res.render('admin/user-form', { managedUser, error: null });
+});
+
+app.post('/admin/users/:id/edit', requireAdmin, async (req, res) => {
+  const managedUser = await User.findByPk(req.params.id);
+  if (!managedUser) return res.status(404).send('Пользователь не найден');
+
+  const username = (req.body.username || '').trim();
+  const role = req.body.role === 'admin' ? 'admin' : 'user';
+
+  if (!username) {
+    return res.render('admin/user-form', {
+      managedUser,
+      error: 'Имя пользователя не может быть пустым'
+    });
+  }
+
+  const existingUser = await User.findOne({ where: { username } });
+  if (existingUser && existingUser.id !== managedUser.id) {
+    managedUser.username = username;
+    managedUser.role = role;
+    return res.render('admin/user-form', {
+      managedUser,
+      error: 'Пользователь с таким именем уже существует'
+    });
+  }
+
+  if (managedUser.id === req.user.id && role !== 'admin') {
+    managedUser.username = username;
+    return res.render('admin/user-form', {
+      managedUser,
+      error: 'Нельзя снять роль администратора у самого себя'
+    });
+  }
+
+  managedUser.username = username;
+  managedUser.role = role;
+  await managedUser.save();
+
+  res.redirect('/admin/users');
+});
+
 app.post('/admin/users/:id/role', requireAdmin, async (req, res) => {
   const user = await User.findByPk(req.params.id);
   if (user && user.id !== req.user.id) {
     user.role = user.role === 'admin' ? 'user' : 'admin';
     await user.save();
   }
+  res.redirect('/admin/users');
+});
+
+app.post('/admin/users/:id/delete', requireAdmin, async (req, res) => {
+  const managedUser = await User.findByPk(req.params.id);
+  if (!managedUser) return res.redirect('/admin/users');
+  if (managedUser.id === req.user.id) return res.redirect('/admin/users');
+
+  await Visit.destroy({ where: { UserId: managedUser.id } });
+  await managedUser.destroy();
+
   res.redirect('/admin/users');
 });
 
