@@ -1,23 +1,67 @@
-// Запуск: node db/make-admin.js <username>
-// Пример:  node db/make-admin.js admin
-
 const sequelize = require('./index');
 const User = require('../models/User');
+const bcryptjs = require('bcryptjs');
 
-const username = process.argv[2];
-if (!username) {
-    console.error('Укажи имя пользователя: node db/make-admin.js <username>');
-    process.exit(1);
-}
+async function createOrUpdateAdmin() {
+    try {
+        await sequelize.authenticate();
+        console.log('✓ Connected to database');
 
-sequelize.sync().then(async () => {
-    const user = await User.findOne({ where: { username } });
-    if (!user) {
-        console.error(`Пользователь "${username}" не найден`);
+        await sequelize.sync();
+        console.log('✓ Database synced');
+
+        const adminEmail = 'admin@citivoice.local';
+        const adminPassword = 'admin12345';
+        const adminUsername = 'admin';
+
+        // Хешируем пароль
+        const hashedPassword = await bcryptjs.hash(adminPassword, 10);
+
+        // Ищем существующего админа по email
+        let admin = await User.findOne({ where: { email: adminEmail } });
+
+        if (admin) {
+            // Обновляем существующего админа
+            admin.password = hashedPassword;
+            admin.role = 'admin';
+            admin.level = 1;
+            await admin.save();
+            console.log(`✓ Updated admin user: ${adminEmail}`);
+        } else {
+            // Ищем по юзernameу если email не найден
+            admin = await User.findOne({ where: { username: adminUsername } });
+            if (admin) {
+                // Обновляем username-based админа
+                admin.email = adminEmail;
+                admin.password = hashedPassword;
+                admin.role = 'admin';
+                admin.level = 1;
+                await admin.save();
+                console.log(`✓ Updated admin user: ${adminUsername} → ${adminEmail}`);
+            } else {
+                // Создаём нового админа
+                admin = await User.create({
+                    email: adminEmail,
+                    username: adminUsername,
+                    password: hashedPassword,
+                    role: 'admin',
+                    level: 1,
+                    exp: 0
+                });
+                console.log(`✓ Created new admin user: ${adminEmail}`);
+            }
+        }
+
+        console.log('\n📋 Admin credentials:');
+        console.log(`Email: ${adminEmail}`);
+        console.log(`Password: ${adminPassword}`);
+        console.log('\n✅ Admin user is ready!');
+
+        process.exit(0);
+    } catch (error) {
+        console.error('❌ Error:', error.message);
         process.exit(1);
     }
-    user.role = 'admin';
-    await user.save();
-    console.log(`✅ Пользователь "${username}" теперь администратор!`);
-    process.exit(0);
-});
+}
+
+createOrUpdateAdmin();

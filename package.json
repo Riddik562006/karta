@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "seed": "node db/seed.js",
     "seed:force": "node db/seed.js --force",
+    "make-admin": "node db/make-admin.js",
     "reset:password": "node db/reset-password.js"
   },
   "keywords": [
